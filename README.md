@@ -1,10 +1,11 @@
 # Scribe
 
-Scribe is a Flutter project that aims to provide a seamless and intuitive experience for transcribing and managing meeting recordings.
+Scribe is a cross-platform flutter project that aims to provide a seamless and intuitive experience for transcribing, summarizing and managing meeting recordings.
 
 ## Features
 
 - **Transcription**: Transcribe meeting recordings to text.
+- **Summarization**: Summarize meeting recordings to text.
 - **Management**: Manage meeting recordings.
 - **UI**: Clean and intuitive user interface.
 

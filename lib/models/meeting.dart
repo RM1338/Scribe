@@ -55,6 +55,7 @@ class Meeting {
   final String? sentiment;
   final bool isLocalOnly;
   final Map<String, String> speakerMapping;
+  final String? detectedLanguage;
 
   const Meeting({
     required this.id,
@@ -79,6 +80,7 @@ class Meeting {
     this.sentiment,
     this.isLocalOnly = false,
     this.speakerMapping = const {},
+    this.detectedLanguage,
   });
 
   Meeting copyWith({
@@ -104,6 +106,7 @@ class Meeting {
     String? sentiment,
     bool? isLocalOnly,
     Map<String, String>? speakerMapping,
+    String? detectedLanguage,
   }) {
     return Meeting(
       id: id ?? this.id,
@@ -128,6 +131,7 @@ class Meeting {
       sentiment: sentiment ?? this.sentiment,
       isLocalOnly: isLocalOnly ?? this.isLocalOnly,
       speakerMapping: speakerMapping ?? this.speakerMapping,
+      detectedLanguage: detectedLanguage ?? this.detectedLanguage,
     );
   }
 
@@ -162,6 +166,7 @@ class Meeting {
       sentiment: json['sentiment'] as String?,
       isLocalOnly: json['isLocalOnly'] as bool? ?? false,
       speakerMapping: Map<String, String>.from(json['speakerMapping'] ?? {}),
+      detectedLanguage: json['detectedLanguage'] as String?,
     );
   }
 
@@ -188,6 +193,7 @@ class Meeting {
         'sentiment': sentiment,
         'isLocalOnly': isLocalOnly,
         'speakerMapping': speakerMapping,
+        'detectedLanguage': detectedLanguage,
       };
 
   String toJsonString() => jsonEncode(toJson());

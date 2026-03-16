@@ -45,12 +45,29 @@ class SummaryService {
     double sensitivity = 0.5,
     String? apiKey,
     bool useCloudMode = true,
+    String? transcriptLanguage,
   }) async {
     if (transcript.trim().isEmpty) {
       return const MeetingSummary(summary: 'No transcript available.');
     }
 
     final isCloud = useCloudMode && apiKey != null && apiKey.isNotEmpty;
+
+    // ── Language instruction ─────────────────────────────────────────────────
+    // If Whisper detected a non-English language, tell the LLM to respond
+    // in the same language so summaries, action items, etc. match the source.
+    final String languageInstruction;
+    if (transcriptLanguage != null &&
+        transcriptLanguage.isNotEmpty &&
+        transcriptLanguage.toLowerCase() != 'en' &&
+        transcriptLanguage.toLowerCase() != 'english') {
+      languageInstruction =
+          'IMPORTANT: The transcript is in language code "$transcriptLanguage". '
+          'You MUST write your ENTIRE response (summary, action items, highlights, '
+          'topics, sentiment — everything) in that same language. Do NOT translate to English.\n\n';
+    } else {
+      languageInstruction = '';
+    }
 
     // ── Style instruction ────────────────────────────────────────────────────
     final String styleInstruction;
@@ -100,7 +117,7 @@ class SummaryService {
           '5. The overall sentiment of the meeting (e.g. Positive, Neutral, Critical).\n'
         : '';
 
-    final prompt = '''You are a professional meeting assistant. Analyze the following meeting transcript and provide:
+    final prompt = '''${languageInstruction}You are a professional meeting assistant. Analyze the following meeting transcript and provide:
 
 1. Summary: $styleInstruction
 2. Action items: $sensitivityInstruction

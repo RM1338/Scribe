@@ -648,6 +648,7 @@ class MeetingProvider with ChangeNotifier {
         status: MeetingStatus.inProgress,
         speakers: uniqueSpeakerIds.isNotEmpty ? uniqueSpeakerIds : meeting.speakers,
         speakerMapping: uniqueSpeakerIds.isNotEmpty ? seedMapping : meeting.speakerMapping,
+        detectedLanguage: result.language,
       );
       _updateMeeting(updated);
 
@@ -662,6 +663,7 @@ class MeetingProvider with ChangeNotifier {
           sensitivity: _settings?.actionItemSensitivity ?? 0.5,
           apiKey: _settings?.groqApiKey,
           useCloudMode: _settings?.isCloudMode ?? true,
+          transcriptLanguage: result.language,
         );
         updated = updated.copyWith(
           summary: summaryResult.summary,
@@ -709,6 +711,7 @@ class MeetingProvider with ChangeNotifier {
         sensitivity: _settings?.actionItemSensitivity ?? 0.5,
         apiKey: _settings?.groqApiKey,
         useCloudMode: _settings?.isCloudMode ?? true,
+        transcriptLanguage: meeting.detectedLanguage,
       );
       _updateMeeting(meeting.copyWith(
         summary: result.summary,
