@@ -7,9 +7,9 @@ class ProcessingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -19,7 +19,7 @@ class ProcessingScreen extends StatelessWidget {
             width: 36,
             height: 5,
             decoration: BoxDecoration(
-              color: AppColors.separator,
+              color: context.appSeparator,
               borderRadius: BorderRadius.circular(2.5),
             ),
           ),
@@ -31,7 +31,7 @@ class ProcessingScreen extends StatelessWidget {
             height: 48,
             child: CircularProgressIndicator(
               strokeWidth: 3,
-              valueColor: AlwaysStoppedAnimation(AppColors.primary),
+              valueColor: AlwaysStoppedAnimation(context.appPrimary),
             ),
           ),
           const SizedBox(height: 24),
@@ -47,7 +47,7 @@ class ProcessingScreen extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             'This usually takes 1–2 minutes',
-            style: TextStyle(fontSize: 14, color: AppColors.textTertiary),
+            style: TextStyle(fontSize: 14, color: context.appTextTertiary),
           ),
           const SizedBox(height: 36),
 
@@ -64,7 +64,7 @@ class ProcessingScreen extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
-                        color: AppColors.primary,
+                        color: context.appPrimary,
                         letterSpacing: 1,
                       ),
                     ),
@@ -80,14 +80,14 @@ class ProcessingScreen extends StatelessWidget {
                   child: LinearProgressIndicator(
                     value: 0.65,
                     minHeight: 6,
-                    backgroundColor: AppColors.surfaceVariant,
-                    valueColor: AlwaysStoppedAnimation(AppColors.primary),
+                    backgroundColor: context.appSurfaceVariant,
+                    valueColor: AlwaysStoppedAnimation(context.appPrimary),
                   ),
                 ),
                 const SizedBox(height: 12),
                 Row(
                   children: [
-                    Icon(Icons.description_outlined, size: 16, color: AppColors.textTertiary),
+                    Icon(Icons.description_outlined, size: 16, color: context.appTextTertiary),
                     const SizedBox(width: 8),
                     const Text(
                       'Marketing Sync - Weekly',
@@ -105,7 +105,7 @@ class ProcessingScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20),
             child: Container(
               decoration: BoxDecoration(
-                color: AppColors.surfaceVariant,
+                color: context.appSurfaceVariant,
                 borderRadius: BorderRadius.circular(12),
               ),
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -118,7 +118,7 @@ class ProcessingScreen extends StatelessWidget {
                   ),
                   Switch.adaptive(
                     value: true,
-                    activeTrackColor: AppColors.green,
+                    activeTrackColor: context.appGreen,
                     onChanged: (v) {},
                   ),
                 ],
@@ -136,7 +136,7 @@ class ProcessingScreen extends StatelessWidget {
               child: TextButton(
                 onPressed: () => Navigator.of(context).pop(),
                 style: TextButton.styleFrom(
-                  backgroundColor: AppColors.surfaceVariant,
+                  backgroundColor: context.appSurfaceVariant,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
@@ -146,7 +146,7 @@ class ProcessingScreen extends StatelessWidget {
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
-                    color: AppColors.primary,
+                    color: context.appPrimary,
                   ),
                 ),
               ),

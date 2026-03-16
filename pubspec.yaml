@@ -1,4 +1,4 @@
-name: meetnote
+name: scribe
 description: "A new Flutter project."
 publish_to: 'none'
 version: 0.1.0+1
@@ -8,11 +8,24 @@ environment:
 
 dependencies:
   audioplayers: ^6.6.0
+  cross_file: ^0.3.5+2
+  device_calendar: ^4.3.3
+  file_picker: ^10.3.10
   flutter:
     sdk: flutter
+  flutter_dotenv: ^6.0.0
+  google_fonts: ^8.0.2
+  http: ^1.2.0
+  http_parser: ^4.1.2
+  intl: ^0.20.2
+  path: ^1.9.0
   path_provider: ^2.1.5
+  permission_handler: ^12.0.1
   provider: ^6.1.5+1
   record: ^6.2.0
+  shared_preferences: ^2.2.0
+  speech_to_text: ^7.3.0
+  timezone: ^0.9.4
 
 dev_dependencies:
   flutter_test:
@@ -21,3 +34,6 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - .env
+

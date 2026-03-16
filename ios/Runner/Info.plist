@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Meetnote</string>
+	<string>Scribe</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -15,7 +15,7 @@
 	<key>CFBundleInfoDictionaryVersion</key>
 	<string>6.0</string>
 	<key>CFBundleName</key>
-	<string>meetnote</string>
+	<string>Scribe</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
@@ -66,5 +66,13 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCalendarsUsageDescription</key>
+	<string>Scribe needs access to your calendar to schedule meetings.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Scribe needs full access to your calendar to add new meetings.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Scribe needs access to speech recognition to transcribe your meetings in real-time.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Scribe needs access to your microphone to record and transcribe meetings.</string>
 </dict>
 </plist>

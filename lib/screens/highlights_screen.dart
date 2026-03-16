@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../providers/meeting_provider.dart';
+import '../models/meeting.dart';
 
 class HighlightsScreen extends StatelessWidget {
   const HighlightsScreen({super.key});
@@ -7,106 +10,128 @@ class HighlightsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            pinned: true,
-            expandedHeight: 90,
-            backgroundColor: AppColors.background,
-            surfaceTintColor: Colors.transparent,
-            flexibleSpace: FlexibleSpaceBar(
-              titlePadding: const EdgeInsets.only(left: 20, bottom: 14),
-              title: const Text(
-                'Highlights',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                  letterSpacing: -0.8,
+      backgroundColor: Colors.transparent,
+      body: Consumer<MeetingProvider>(
+        builder: (context, provider, _) {
+          final allMeetings = provider.allMeetings;
+          
+          // Flatten all action items and highlights from all meetings
+          final List<Map<String, dynamic>> allItems = [];
+          for (final meeting in allMeetings) {
+            for (final action in meeting.actionItems) {
+              allItems.add({
+                'type': 'Action',
+                'text': action,
+                'meeting': meeting,
+                'icon': Icons.check_circle_outline_rounded,
+                'color': context.appAccent,
+              });
+            }
+            for (final highlight in meeting.highlights) {
+              allItems.add({
+                'type': 'Highlight',
+                'text': highlight,
+                'meeting': meeting,
+                'icon': Icons.star_outline_rounded,
+                'color': const Color(0xFFE5A84B),
+              });
+            }
+          }
+
+          // Sort descending by logic (assume newer meetings at start of list)
+          return CustomScrollView(
+            slivers: [
+              SliverAppBar(
+                pinned: true,
+                expandedHeight: 90,
+                backgroundColor: Colors.transparent,
+                surfaceTintColor: Colors.transparent,
+                flexibleSpace: FlexibleSpaceBar(
+                  titlePadding: const EdgeInsets.only(left: 20, bottom: 14),
+                  title: Text(
+                    'Highlights',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.w700,
+                      color: context.appTextPrimary,
+                      letterSpacing: -0.8,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
 
-          // Filter chips
-          SliverToBoxAdapter(
-            child: SizedBox(
-              height: 44,
-              child: ListView(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                children: const [
-                  _FilterChip(label: 'All', isSelected: true),
-                  _FilterChip(label: 'Quotes'),
-                  _FilterChip(label: 'Actions'),
-                  _FilterChip(label: 'Decisions'),
-                ],
-              ),
-            ),
-          ),
+              if (allItems.isEmpty)
+                SliverFillRemaining(
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.auto_awesome_outlined, size: 64, color: context.appTextTertiary),
+                        SizedBox(height: 16),
+                        Text(
+                          'No highlights yet',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: context.appTextSecondary),
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Record a meeting to generate AI highlights',
+                          style: TextStyle(fontSize: 14, color: context.appTextTertiary),
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              else
+                SliverPadding(
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  sliver: SliverList(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) {
+                        final item = allItems[index];
+                        return _HighlightCard(
+                          type: item['type'] as String,
+                          text: item['text'] as String,
+                          meeting: item['meeting'] as Meeting,
+                          icon: item['icon'] as IconData,
+                          color: item['color'] as Color,
+                        );
+                      },
+                      childCount: allItems.length,
+                    ),
+                  ),
+                ),
 
-          // Highlights List
-          SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  return _HighlightCard(index: index);
-                },
-                childCount: 5,
-              ),
-            ),
-          ),
-
-          const SliverToBoxAdapter(child: SizedBox(height: 160)),
-        ],
+              SliverToBoxAdapter(child: SizedBox(height: 160)),
+            ],
+          );
+        },
       ),
     );
   }
 }
 
 class _HighlightCard extends StatelessWidget {
-  final int index;
-  const _HighlightCard({required this.index});
+  final String type;
+  final String text;
+  final Meeting meeting;
+  final IconData icon;
+  final Color color;
+
+  const _HighlightCard({
+    required this.type,
+    required this.text,
+    required this.meeting,
+    required this.icon,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final types = ['Quote', 'Action', 'Decision', 'Quote', 'Action'];
-    final icons = [
-      Icons.format_quote_rounded,
-      Icons.check_circle_outline_rounded,
-      Icons.lightbulb_outline_rounded,
-      Icons.format_quote_rounded,
-      Icons.check_circle_outline_rounded,
-    ];
-    final colors = [
-      AppColors.primary,
-      AppColors.accent,
-      const Color(0xFFE5A84B),
-      AppColors.primary,
-      AppColors.accent,
-    ];
-    final quotes = [
-      '"We need to prioritize the mobile experience above everything else for Q4."',
-      'Assign the design system audit to the UX team by end of week.',
-      'Decided to postpone the API migration to Q1 next year.',
-      '"The new onboarding flow has increased retention by 23% in the first week."',
-      'Schedule a follow-up with the engineering team about performance benchmarks.',
-    ];
-    final speakers = [
-      'Sarah Kim • Product Sync',
-      'John Doe • Sprint Planning',
-      'Alex Chen • Strategy Review',
-      'Maria Lopez • Growth Meeting',
-      'David Park • Eng Standup',
-    ];
-
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: context.appSurface,
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -121,90 +146,61 @@ class _HighlightCard extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(icons[index], size: 16, color: colors[index]),
-              const SizedBox(width: 6),
+              Icon(icon, size: 16, color: color),
+              SizedBox(width: 6),
               Text(
-                types[index],
+                type,
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.w600,
-                  color: colors[index],
+                  color: color,
                   letterSpacing: 0.3,
                 ),
               ),
-              const Spacer(),
+              Spacer(),
               Text(
-                '${2 + index}m ago',
-                style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
+                meeting.date,
+                style: TextStyle(fontSize: 12, color: context.appTextTertiary),
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Text(
-            quotes[index],
-            style: const TextStyle(
+            text,
+            style: TextStyle(
               fontSize: 15,
               fontWeight: FontWeight.w500,
               height: 1.5,
               letterSpacing: -0.2,
-              color: AppColors.textPrimary,
+              color: context.appTextPrimary,
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: 12),
           Row(
             children: [
               CircleAvatar(
                 radius: 10,
-                backgroundColor: AppColors.primary.withValues(alpha: 0.1),
+                backgroundColor: context.appPrimary.withValues(alpha: 0.1),
                 child: Text(
-                  speakers[index].substring(0, 1),
-                  style: TextStyle(fontSize: 10, color: AppColors.primary, fontWeight: FontWeight.w600),
+                  meeting.title.substring(0, 1).toUpperCase(),
+                  style: TextStyle(fontSize: 10, color: context.appPrimary, fontWeight: FontWeight.w600),
                 ),
               ),
-              const SizedBox(width: 8),
-              Text(
-                speakers[index],
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  meeting.title,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: context.appTextSecondary,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool isSelected;
-
-  const _FilterChip({required this.label, this.isSelected = false});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(right: 8),
-      child: Material(
-        color: isSelected ? AppColors.textPrimary : Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: () {},
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
-                color: isSelected ? Colors.white : AppColors.textSecondary,
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

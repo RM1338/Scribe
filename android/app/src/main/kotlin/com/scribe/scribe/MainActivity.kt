@@ -1,4 +1,4 @@
-package com.meetnote.meetnote
+package com.scribe.scribe
 
 import io.flutter.embedding.android.FlutterActivity
 

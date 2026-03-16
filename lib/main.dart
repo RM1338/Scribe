@@ -1,23 +1,51 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'theme/app_theme.dart';
 import 'navigation/app_shell.dart';
 import 'dart:io' show Platform;
+import 'providers/meeting_provider.dart';
+import 'providers/settings_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 
-void main() {
-  runApp(const MeetNoteApp());
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  await dotenv.load(fileName: ".env");
+  final prefs = await SharedPreferences.getInstance();
+  
+  runApp(
+    MultiProvider(
+      providers: [
+        ChangeNotifierProvider(create: (_) => SettingsProvider(prefs)),
+        ChangeNotifierProxyProvider<SettingsProvider, MeetingProvider>(
+          create: (_) => MeetingProvider(),
+          update: (_, settings, meeting) => meeting!..attachSettings(settings)..init(),
+        ),
+      ],
+      child: const ScribeApp(),
+    ),
+  );
 }
 
-class MeetNoteApp extends StatelessWidget {
-  const MeetNoteApp({super.key});
+class ScribeApp extends StatelessWidget {
+  const ScribeApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     final isDesktop = Platform.isLinux || Platform.isMacOS || Platform.isWindows;
 
+    final settings = context.watch<SettingsProvider>();
+    final themeMode = _getThemeMode(settings.themeMode);
+
     return MaterialApp(
-      title: 'MeetNote',
+      title: 'Scribe',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
+      darkTheme: AppTheme.dark,
+      themeMode: themeMode,
+      themeAnimationDuration: const Duration(milliseconds: 800),
+      themeAnimationCurve: Curves.easeInOutCubic,
       builder: isDesktop
           ? (context, child) {
               return Container(
@@ -76,7 +104,18 @@ class MeetNoteApp extends StatelessWidget {
               );
             }
           : null,
-      home: const AppShell(),
+      home: AppShell(key: AppShell.shellKey),
     );
+  }
+
+  ThemeMode _getThemeMode(ThemeModeOption option) {
+    switch (option) {
+      case ThemeModeOption.light:
+        return ThemeMode.light;
+      case ThemeModeOption.dark:
+        return ThemeMode.dark;
+      case ThemeModeOption.system:
+        return ThemeMode.system;
+    }
   }
 }

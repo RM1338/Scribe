@@ -1,297 +1,762 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
+import '../providers/meeting_provider.dart';
 import '../models/meeting.dart';
-import 'player_screen.dart';
 
-class DetailScreen extends StatelessWidget {
+class DetailScreen extends StatefulWidget {
   final Meeting meeting;
   const DetailScreen({super.key, required this.meeting});
 
   @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Colors.white,
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
-          onPressed: () => Navigator.pop(context),
-        ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.more_horiz_rounded, color: AppColors.textSecondary),
-            onPressed: () {},
-          ),
-        ],
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Hero Section
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(
-                  colors: [Color(0xFF1A8C7E), Color(0xFF2DB5A5)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.25),
-                    blurRadius: 24,
-                    offset: const Offset(0, 12),
-                  ),
-                ],
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Icon(Icons.graphic_eq_rounded, color: Colors.white, size: 28),
-                      Text(
-                        meeting.duration,
-                        style: const TextStyle(color: Colors.white70, fontSize: 15),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  Text(
-                    meeting.title,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w700,
-                      letterSpacing: -0.5,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    '${meeting.date} • ${meeting.attendeeInitials.length} attendees',
-                    style: const TextStyle(color: Colors.white70, fontSize: 14),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-
-            // Play button
-            Row(
-              children: [
-                Expanded(
-                  child: Material(
-                    color: AppColors.primary,
-                    borderRadius: BorderRadius.circular(12),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(12),
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => PlayerScreen(meeting: meeting)),
-                        );
-                      },
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 14),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.play_arrow_rounded, color: Colors.white, size: 22),
-                            SizedBox(width: 8),
-                            Text(
-                              'Listen Now',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                _ActionCircle(icon: Icons.share_outlined, onTap: () {}),
-                const SizedBox(width: 8),
-                _ActionCircle(icon: Icons.more_horiz_rounded, onTap: () {}),
-              ],
-            ),
-            const SizedBox(height: 32),
-
-            // AI Summary
-            Text('AI Summary', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 12),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.primaryLight,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppColors.primary.withValues(alpha: 0.1)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.auto_awesome, size: 16, color: AppColors.primary),
-                      const SizedBox(width: 6),
-                      Text(
-                        'Generated by AI',
-                        style: TextStyle(fontSize: 12, color: AppColors.primary, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  const Text(
-                    'The team discussed the upcoming Q4 roadmap, focusing on the mobile app overhaul. Key decisions included adopting a performance-first approach and prioritizing the Android experience. Sarah emphasized the importance of shipping before the holiday season.',
-                    style: TextStyle(
-                      fontSize: 15,
-                      height: 1.6,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 32),
-
-            // Transcript
-            Text('Transcript', style: Theme.of(context).textTheme.titleLarge),
-            const SizedBox(height: 16),
-
-            _TranscriptEntry(
-              speaker: 'Sarah Kim',
-              initials: 'SK',
-              time: '0:30',
-              text: 'Alright everyone, let\'s kick off the Q4 planning. I want to start with our mobile strategy.',
-            ),
-            _TranscriptEntry(
-              speaker: 'John Doe',
-              initials: 'JD',
-              time: '1:15',
-              text: 'I think we should prioritize the performance audit first. Users have been reporting slow load times on older Android devices.',
-            ),
-            _TranscriptEntry(
-              speaker: 'Alex Chen',
-              initials: 'AC',
-              time: '2:45',
-              text: 'Agreed. I\'ve been looking at the flamegraphs and there are some clear bottlenecks in the rendering pipeline we can address.',
-            ),
-            _TranscriptEntry(
-              speaker: 'Sarah Kim',
-              initials: 'SK',
-              time: '3:30',
-              text: 'Perfect. Let\'s make that the top priority. We need to ship before the holiday season to capture the end-of-year traffic.',
-            ),
-            _TranscriptEntry(
-              speaker: 'Maria Lopez',
-              initials: 'ML',
-              time: '4:10',
-              text: 'I\'ll start the design system audit this week so we\'re ready when the performance work wraps up.',
-            ),
-            const SizedBox(height: 120),
-          ],
-        ),
-      ),
-    );
-  }
+  State<DetailScreen> createState() => _DetailScreenState();
 }
 
-class _ActionCircle extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
+class _DetailScreenState extends State<DetailScreen> with SingleTickerProviderStateMixin {
+  late TabController _tabController;
 
-  const _ActionCircle({required this.icon, required this.onTap});
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this, initialIndex: 0);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      color: AppColors.surfaceVariant,
-      shape: const CircleBorder(),
-      child: InkWell(
-        customBorder: const CircleBorder(),
-        onTap: onTap,
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Icon(icon, color: AppColors.textSecondary, size: 20),
-        ),
-      ),
-    );
-  }
-}
+    return Consumer<MeetingProvider>(
+      builder: (context, provider, _) {
+        final live = provider.allMeetings.firstWhere(
+          (m) => m.id == widget.meeting.id,
+          orElse: () => widget.meeting,
+        );
+        final isProcessing = provider.currentProcessingId == live.id;
 
-class _TranscriptEntry extends StatelessWidget {
-  final String speaker;
-  final String initials;
-  final String time;
-  final String text;
-
-  const _TranscriptEntry({
-    required this.speaker,
-    required this.initials,
-    required this.time,
-    required this.text,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 20),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          CircleAvatar(
-            radius: 14,
-            backgroundColor: AppColors.primary.withValues(alpha: 0.1),
-            child: Text(
-              initials,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w600,
-                color: AppColors.primary,
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+        return Scaffold(
+          backgroundColor: context.appBackground,
+          appBar: _buildAppBar(context, live, provider),
+          body: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 1. Title Section
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 10.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      speaker,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                      live.title,
+                      style: GoogleFonts.manrope(
+                        fontSize: 28,
+                        fontWeight: FontWeight.w800,
+                        color: context.appTextPrimary,
+                        letterSpacing: -0.8,
+                        height: 1.1,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(height: 8),
                     Text(
-                      time,
-                      style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
+                      '${live.date} • ${live.duration}',
+                      style: GoogleFonts.manrope(
+                        fontSize: 14,
+                        color: context.appTextSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  text,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    height: 1.5,
-                    color: AppColors.textPrimary,
+              ),
+              const SizedBox(height: 10),
+
+              // 2. Segmented Control (Tabs)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                child: Container(
+                  height: 44,
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: context.appSurfaceVariant,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: TabBar(
+                    controller: _tabController,
+                    indicator: BoxDecoration(
+                      color: context.appPrimary,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    labelColor: Colors.white,
+                    unselectedLabelColor: context.appTextSecondary,
+                    labelStyle: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 13),
+                    unselectedLabelStyle: GoogleFonts.manrope(fontWeight: FontWeight.w600, fontSize: 13),
+                    dividerColor: Colors.transparent, // Remove default underline
+                    tabs: const [
+                      Tab(text: 'Transcript'),
+                      Tab(text: 'Summary'),
+                    ],
                   ),
                 ),
-              ],
+              ),
+
+              if (isProcessing)
+                Padding(
+                  padding: const EdgeInsets.only(top: 20, left: 20, right: 20),
+                  child: _ProcessingCard(provider: provider),
+                ),
+
+              const SizedBox(height: 20),
+
+              // 3. Main Content Area (Tab Views)
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildTranscriptView(context, live, provider),
+                    _buildSummaryView(context, live, provider),
+                  ],
+                ),
+              ),
+
+              // 4. Persistent Audio Player
+              if (live.audioFilePath != null)
+                _buildAudioPlayer(context, live, provider),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(BuildContext context, Meeting live, MeetingProvider provider) {
+    return AppBar(
+      backgroundColor: context.appBackground,
+      surfaceTintColor: Colors.transparent,
+      elevation: 0,
+      centerTitle: true,
+      leading: IconButton(
+        icon: Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            color: context.appSurface,
+            shape: BoxShape.circle,
+            border: Border.all(color: context.appSeparator),
+          ),
+          child: Icon(Icons.arrow_back_ios_new_rounded, color: context.appTextPrimary, size: 16),
+        ),
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: Text('Meeting Details', style: GoogleFonts.manrope(color: context.appTextPrimary, fontSize: 16, fontWeight: FontWeight.w600)),
+      actions: [
+        PopupMenuButton<String>(
+          color: context.appSurface,
+          surfaceTintColor: Colors.transparent,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          icon: Icon(Icons.edit_outlined, color: context.appTextPrimary, size: 24),
+          onSelected: (value) async {
+            if (value == 'rename') {
+              final newTitle = await _showRenameDialog(context, live.title);
+              if (newTitle != null) provider.renameMeeting(live.id, newTitle);
+            } else if (value == 'delete') {
+              final confirm = await _showDeleteConfirm(context);
+              if (confirm == true) {
+                provider.deleteMeeting(live.id);
+                if (context.mounted) Navigator.pop(context);
+              }
+            } else if (value == 'move') {
+              _showMoveToFolderDialog(context, provider, live);
+            }
+          },
+          itemBuilder: (context) => [
+            PopupMenuItem(
+              value: 'rename',
+              child: Text('Rename', style: GoogleFonts.manrope()),
+            ),
+            PopupMenuItem(
+              value: 'move',
+              child: Text('Move to Folder', style: GoogleFonts.manrope()),
+            ),
+            PopupMenuItem(
+              value: 'delete',
+              child: Text('Delete', style: GoogleFonts.manrope(color: Colors.red)),
+            ),
+          ],
+        ),
+        const SizedBox(width: 8),
+      ],
+    );
+  }
+
+  Widget _buildSummaryView(BuildContext context, Meeting live, MeetingProvider provider) {
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+      children: [
+        if (live.summary != null && live.summary!.isNotEmpty)
+          _buildSummaryCard(
+            context,
+            'Smart Summary',
+            Icons.lightbulb,
+            live.summary!,
+          ),
+        if (live.actionItems.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildActionItemsCard(context, live.actionItems),
+        ],
+        if (live.highlights.isNotEmpty) ...[
+          const SizedBox(height: 16),
+          _buildHighlightsCard(context, live.highlights),
+        ],
+        if ((live.summary == null || live.summary!.isEmpty) && live.actionItems.isEmpty)
+          Center(
+            child: Text(
+              provider.currentProcessingId == live.id
+                  ? 'Generating summary…'
+                  : 'No summary available.',
+              style: GoogleFonts.manrope(color: context.appTextSecondary),
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildSummaryCard(BuildContext context, String title, IconData icon, String text) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: context.appShadowSubtle,
+        border: Border.all(color: context.appSeparator.withValues(alpha: 0.5), width: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: context.appPrimary, size: 20),
+              const SizedBox(width: 8),
+              Text(title, style: GoogleFonts.manrope(color: context.appTextPrimary, fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // We can try to parse Key Points or just display it with custom bullets
+          ...text.split('\n').where((s) => s.trim().isNotEmpty).map((line) {
+            final content = line.trim().replaceFirst(RegExp(r'^[-*] '), '');
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 12.0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0, right: 12.0),
+                    child: Container(width: 6, height: 6, decoration: BoxDecoration(color: context.appPrimary, shape: BoxShape.circle)),
+                  ),
+                  Expanded(child: Text(content, style: GoogleFonts.manrope(color: context.appTextSecondary, fontSize: 15, height: 1.5))),
+                ],
+              ),
+            );
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionItemsCard(BuildContext context, List<String> items) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: context.appShadowSubtle,
+        border: Border.all(color: context.appSeparator.withValues(alpha: 0.5), width: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.check_circle_outline, color: context.appTextPrimary, size: 20),
+              const SizedBox(width: 8),
+              Text('Action Items', style: GoogleFonts.manrope(color: context.appTextPrimary, fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...items.map((item) => Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 2.0, right: 12.0),
+                      child: Icon(Icons.check_box_outline_blank_rounded, color: context.appPrimary.withValues(alpha: 0.5), size: 20),
+                    ),
+                    Expanded(
+                        child: Text(item, style: GoogleFonts.manrope(color: context.appTextSecondary, fontSize: 15, height: 1.5))),
+                  ],
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHighlightsCard(BuildContext context, List<String> items) {
+     return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: context.appShadowSubtle,
+        border: Border.all(color: context.appSeparator.withValues(alpha: 0.5), width: 0.5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.star_outline_rounded, color: context.appTextPrimary, size: 20),
+              const SizedBox(width: 8),
+              Text('Highlights', style: GoogleFonts.manrope(color: context.appTextPrimary, fontWeight: FontWeight.bold, fontSize: 18)),
+            ],
+          ),
+          const SizedBox(height: 16),
+          ...items.map((item) => Padding(
+                padding: const EdgeInsets.only(bottom: 12.0),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8.0, right: 12.0),
+                      child: Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.amber, shape: BoxShape.circle)),
+                    ),
+                    Expanded(
+                        child: Text(item, style: GoogleFonts.manrope(color: context.appTextSecondary, fontSize: 15, height: 1.5))),
+                  ],
+                ),
+              )),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTranscriptView(BuildContext context, Meeting live, MeetingProvider provider) {
+    if (live.segments.isEmpty) {
+      if (live.transcript != null && live.transcript!.isNotEmpty) {
+        return ListView(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+               decoration: BoxDecoration(
+                color: context.appSurface,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: context.appShadowSubtle,
+                border: Border.all(color: context.appSeparator.withValues(alpha: 0.5), width: 0.5),
+              ),
+              child: Text(live.transcript!, style: GoogleFonts.manrope(color: context.appTextPrimary, fontSize: 15, height: 1.6)),
+            )
+          ]
+        );
+      }
+      return Center(
+        child: Text(
+          provider.currentProcessingId == live.id ? 'Transcribing…' : 'No transcript available.',
+          style: GoogleFonts.manrope(color: context.appTextSecondary),
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
+      itemCount: live.segments.length,
+      itemBuilder: (context, index) {
+        final seg = live.segments[index];
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+
+        return _buildTranscriptLine(context, live.id, seg, live.speakerMapping, isDark, provider);
+      },
+    );
+  }
+
+  String _formatTime(double seconds) {
+    final m = seconds ~/ 60;
+    final s = seconds.toInt() % 60;
+    return '${m.toString().padLeft(2, '0')}:${s.toString().padLeft(2, '0')}';
+  }
+
+  Widget _buildTranscriptLine(
+      BuildContext context, String meetingId, MeetingSegment segment, Map<String, String> speakerMapping, bool isDark, MeetingProvider provider) {
+    final speakerId = segment.speaker;
+    final displayName = speakerId != null ? (speakerMapping[speakerId] ?? speakerId) : 'Unknown';
+    // Generate initials for avatar
+    final initials = displayName.split(' ').take(2).map((e) => e.isNotEmpty ? e[0].toUpperCase() : '').join();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 24.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () async {
+                   final newName = await _showRenameSpeakerDialog(context, displayName);
+                    if (newName != null && newName.isNotEmpty && speakerId != null) {
+                      provider.renameSpeaker(meetingId, speakerId, newName);
+                    }
+                },
+                child: CircleAvatar(
+                  radius: 14,
+                  backgroundColor: context.appPrimary.withValues(alpha: 0.15),
+                  child: Text(
+                    initials.isNotEmpty ? initials : '?',
+                    style: GoogleFonts.manrope(fontSize: 10, fontWeight: FontWeight.bold, color: context.appPrimary),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  displayName,
+                  style: GoogleFonts.manrope(color: context.appTextSecondary, fontSize: 14, fontWeight: FontWeight.w600),
+                ),
+              ),
+              Text(
+                _formatTime(segment.start),
+                style: GoogleFonts.manrope(color: context.appTextTertiary, fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            segment.text,
+            style: GoogleFonts.manrope(color: context.appTextPrimary, fontSize: 16, height: 1.5, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAudioPlayer(BuildContext context, Meeting live, MeetingProvider provider) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isPlayingThis = provider.currentlyPlayingMeeting?.id == live.id;
+    final isPlaying = isPlayingThis && provider.isPlaying;
+    
+    // We will just use the exact logic of MiniPlayer but restyle it to match Granola
+    double progress = 0.0;
+    String currentPos = '00:00';
+    String maxPos = live.duration;
+
+    if (isPlayingThis) {
+      if (provider.totalDuration.inMilliseconds > 0) {
+        progress = provider.playbackPosition.inMilliseconds / provider.totalDuration.inMilliseconds;
+      }
+      currentPos = _formatDuration(provider.playbackPosition);
+      maxPos = _formatDuration(provider.totalDuration);
+    } else {
+      progress = 0.0;
+      currentPos = '00:00';
+    }
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(context).padding.bottom + 10),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: const BorderRadius.only(topLeft: Radius.circular(20), topRight: Radius.circular(20)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, -4),
+          )
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              IconButton(
+                icon: const Icon(Icons.replay_10_rounded),
+                color: context.appPrimary,
+                iconSize: 28,
+                onPressed: () {
+                  if (isPlayingThis) {
+                    final newPos = provider.playbackPosition - const Duration(seconds: 10);
+                    provider.seek(newPos < Duration.zero ? Duration.zero : newPos);
+                  }
+                },
+              ),
+              const SizedBox(width: 20),
+              GestureDetector(
+                onTap: () {
+                  provider.playMeeting(live);
+                },
+                child: CircleAvatar(
+                  radius: 28,
+                  backgroundColor: context.appPrimary,
+                  child: Icon(
+                    isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 20),
+              IconButton(
+                icon: const Icon(Icons.forward_10_rounded),
+                color: context.appPrimary,
+                iconSize: 28,
+                onPressed: () {
+                  if (isPlayingThis) {
+                    final newPos = provider.playbackPosition + const Duration(seconds: 10);
+                    provider.seek(newPos > provider.totalDuration ? provider.totalDuration : newPos);
+                  }
+                },
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Text(currentPos, style: GoogleFonts.manrope(color: context.appTextTertiary, fontSize: 11, fontWeight: FontWeight.w600)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: SliderTheme(
+                  data: SliderThemeData(
+                    trackHeight: 4,
+                    thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 0), // No thumb
+                    overlayShape: SliderComponentShape.noOverlay,
+                    activeTrackColor: context.appPrimary,
+                    inactiveTrackColor: context.appSeparator,
+                  ),
+                  child: Slider(
+                    value: progress.clamp(0.0, 1.0),
+                    onChanged: (v) {
+                      if (isPlayingThis) {
+                        final ms = (v * provider.totalDuration.inMilliseconds).toInt();
+                        provider.seek(Duration(milliseconds: ms));
+                      }
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Text(maxPos, style: GoogleFonts.manrope(color: context.appTextTertiary, fontSize: 11, fontWeight: FontWeight.w600)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  String _formatDuration(Duration d) {
+    if (d.inHours > 0) {
+      return '${d.inHours}:${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
+    }
+    return '${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
+  }
+
+
+  // Dialogs from previous implementation remain identical
+  Future<String?> _showRenameDialog(BuildContext context, String currentTitle) async {
+    final controller = TextEditingController(text: currentTitle);
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: context.appSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Rename', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        content: TextField(
+          controller: controller,
+          style: GoogleFonts.manrope(color: context.appTextPrimary),
+          decoration: InputDecoration(
+            hintText: 'Enter title',
+            hintStyle: GoogleFonts.manrope(color: context.appTextTertiary),
+            filled: true,
+            fillColor: context.appSurfaceVariant,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel', style: GoogleFonts.manrope())),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: Text('Save', style: GoogleFonts.manrope(color: context.appPrimary, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<bool?> _showDeleteConfirm(BuildContext context) async {
+    return showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: context.appSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Delete Meeting?', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        content: Text('This action cannot be undone.', style: GoogleFonts.manrope(color: context.appTextSecondary)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancel', style: GoogleFonts.manrope())),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text('Delete', style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMoveToFolderDialog(BuildContext context, MeetingProvider provider, Meeting meeting) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: context.appSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Move to Folder', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const Icon(Icons.folder_off_outlined),
+                title: Text('None (Remove from folder)', style: GoogleFonts.manrope()),
+                onTap: () { provider.moveMeetingToFolder(meeting.id, null); Navigator.pop(context); },
+              ),
+              const Divider(),
+              ...provider.folders.map((folder) => ListTile(
+                leading: Icon(Icons.folder_rounded, color: Color(folder.colorValue)),
+                title: Text(folder.name, style: GoogleFonts.manrope()),
+                onTap: () { provider.moveMeetingToFolder(meeting.id, folder.id); Navigator.pop(context); },
+              )),
+              if (provider.folders.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 8),
+                  child: Text('No folders created yet.', style: GoogleFonts.manrope(color: context.appTextTertiary)),
+                ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () { Navigator.pop(context); _showCreateFolderDialog(context, provider); },
+            child: Text('New Folder', style: GoogleFonts.manrope(color: context.appPrimary)),
+          ),
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Close', style: GoogleFonts.manrope())),
+        ],
+      ),
+    );
+  }
+
+  void _showCreateFolderDialog(BuildContext context, MeetingProvider provider) {
+    final controller = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: context.appSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('New Folder', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          style: GoogleFonts.manrope(color: context.appTextPrimary),
+          decoration: InputDecoration(
+            hintText: 'Folder Name',
+            hintStyle: GoogleFonts.manrope(color: context.appTextTertiary),
+            filled: true,
+            fillColor: context.appSurfaceVariant,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel', style: GoogleFonts.manrope())),
+          TextButton(
+            onPressed: () {
+              if (controller.text.isNotEmpty) {
+                provider.createFolder(controller.text, context.appPrimary.toARGB32());
+                Navigator.pop(context);
+              }
+            },
+            child: Text('Create', style: GoogleFonts.manrope(color: context.appPrimary, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<String?> _showRenameSpeakerDialog(BuildContext context, String currentName) async {
+    final controller = TextEditingController(text: currentName);
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: context.appSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text('Rename Speaker', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        content: TextField(
+          controller: controller,
+          style: GoogleFonts.manrope(color: context.appTextPrimary),
+          decoration: InputDecoration(
+            hintText: 'Enter name',
+            hintStyle: GoogleFonts.manrope(color: context.appTextTertiary),
+            filled: true,
+            fillColor: context.appSurfaceVariant,
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          ),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel', style: GoogleFonts.manrope())),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: Text('Save', style: GoogleFonts.manrope(color: context.appPrimary, fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProcessingCard extends StatelessWidget {
+  final MeetingProvider provider;
+  const _ProcessingCard({required this.provider});
+
+  @override
+  Widget build(BuildContext context) {
+    final label = provider.processingState == ProcessingState.summarizing
+        ? 'Generating AI summary…'
+        : 'Transcribing audio…';
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: context.appPrimary.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 20,
+            height: 20,
+            child: CircularProgressIndicator(strokeWidth: 2.5, color: context.appPrimary),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              label,
+              style: GoogleFonts.manrope(fontSize: 14, fontWeight: FontWeight.w600, color: context.appTextPrimary),
             ),
           ),
         ],

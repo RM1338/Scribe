@@ -21,8 +21,8 @@ class MeetingCard extends StatelessWidget {
         height: 180,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: context.appSurface,
+          borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -38,33 +38,51 @@ class MeetingCard extends StatelessWidget {
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: AppColors.primaryLight,
+                color: context.appPrimaryLight,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: const Icon(Icons.graphic_eq_rounded, color: AppColors.primary, size: 20),
+              child: Icon(Icons.graphic_eq_rounded, color: context.appPrimary, size: 20),
             ),
-            const SizedBox(height: 14),
+            if (meeting.isLocalOnly) ...[
+              SizedBox(height: 8),
+              Row(
+                children: [
+                   Icon(Icons.lock_outline_rounded, size: 10, color: context.appTextTertiary),
+                   SizedBox(width: 4),
+                   Text(
+                     'LOCAL ONLY',
+                     style: TextStyle(
+                       fontSize: 9,
+                       fontWeight: FontWeight.w700,
+                       color: context.appTextTertiary,
+                       letterSpacing: 0.2,
+                     ),
+                   ),
+                ],
+              ),
+            ],
+            SizedBox(height: 14),
             Text(
               meeting.title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 height: 1.3,
                 letterSpacing: -0.2,
-                color: AppColors.textPrimary,
+                color: context.appTextPrimary,
               ),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
-            const Spacer(),
+            Spacer(),
             Text(
               meeting.date,
-              style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
+              style: TextStyle(fontSize: 12, color: context.appTextTertiary),
             ),
-            const SizedBox(height: 2),
+            SizedBox(height: 2),
             Text(
               meeting.duration,
-              style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
+              style: TextStyle(fontSize: 12, color: context.appTextTertiary),
             ),
           ],
         ),
