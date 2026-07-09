@@ -42,8 +42,8 @@ class _AppShellState extends State<AppShell> {
   @override
   Widget build(BuildContext context) {
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 800),
-      curve: Curves.easeInOutCubic,
+      duration: const Duration(milliseconds: 300),
+      curve: Curves.easeInOut,
       color: context.appBackground,
       child: Scaffold(
         backgroundColor: Colors.transparent, // Let AnimatedContainer handle background
@@ -84,8 +84,8 @@ class _AppShellState extends State<AppShell> {
 
             // Clean bottom nav
             AnimatedContainer(
-              duration: const Duration(milliseconds: 800),
-              curve: Curves.easeInOutCubic,
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
               decoration: BoxDecoration(
                 color: context.appSurface,
                 border: Border(

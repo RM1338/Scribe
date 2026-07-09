@@ -1,22 +1,31 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'theme/app_theme.dart';
-import 'navigation/app_shell.dart';
+import 'screens/auth/auth_gate.dart';
 import 'dart:io' show Platform;
+import 'providers/auth_provider.dart';
 import 'providers/meeting_provider.dart';
 import 'providers/settings_provider.dart';
+import 'services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   await dotenv.load(fileName: ".env");
   final prefs = await SharedPreferences.getInstance();
-  
+
+  await Supabase.initialize(
+    url: dotenv.env['SUPABASE_URL']!,
+    publishableKey: dotenv.env['SUPABASE_ANON_KEY']!,
+  );
+
   runApp(
     MultiProvider(
       providers: [
+        ChangeNotifierProvider(create: (_) => AuthProvider(AuthService())),
         ChangeNotifierProvider(create: (_) => SettingsProvider(prefs)),
         ChangeNotifierProxyProvider<SettingsProvider, MeetingProvider>(
           create: (_) => MeetingProvider(),
@@ -44,8 +53,8 @@ class ScribeApp extends StatelessWidget {
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
       themeMode: themeMode,
-      themeAnimationDuration: const Duration(milliseconds: 800),
-      themeAnimationCurve: Curves.easeInOutCubic,
+      themeAnimationDuration: const Duration(milliseconds: 300),
+      themeAnimationCurve: Curves.easeInOut,
       builder: isDesktop
           ? (context, child) {
               return Container(
@@ -104,7 +113,7 @@ class ScribeApp extends StatelessWidget {
               );
             }
           : null,
-      home: AppShell(key: AppShell.shellKey),
+      home: const AuthGate(),
     );
   }
 

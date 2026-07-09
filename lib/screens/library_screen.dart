@@ -97,7 +97,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 color: context.appTextPrimary,
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
-                fontFamily: GoogleFonts.manrope().fontFamily,
+                fontFamily: AppTheme.fontFamily,
               ),
             ),
             actions: [
@@ -124,8 +124,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 800),
-                  curve: Curves.easeInOutCubic,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOut,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   decoration: BoxDecoration(
                     color: context.appSurfaceVariant,
@@ -134,11 +134,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   child: TextField(
                     controller: _searchController,
                     onChanged: (v) => setState(() => _searchQuery = v),
-                    style: TextStyle(color: context.appTextPrimary, fontFamily: GoogleFonts.manrope().fontFamily),
+                    style: TextStyle(color: context.appTextPrimary, fontFamily: AppTheme.fontFamily),
                     decoration: InputDecoration(
                       icon: Icon(Icons.search, color: context.appTextSecondary),
                       hintText: 'Search',
-                      hintStyle: TextStyle(color: context.appTextSecondary, fontFamily: GoogleFonts.manrope().fontFamily),
+                      hintStyle: TextStyle(color: context.appTextSecondary, fontFamily: AppTheme.fontFamily),
                       border: InputBorder.none,
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
@@ -187,7 +187,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                 const SizedBox(height: 12),
                                 Text(
                                   'Shared recordings will appear here',
-                                  style: TextStyle(color: context.appTextSecondary, fontFamily: GoogleFonts.manrope().fontFamily),
+                                  style: TextStyle(color: context.appTextSecondary, fontFamily: AppTheme.fontFamily),
                                 ),
                               ],
                             ),
@@ -200,7 +200,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                                       : _selectedTab == 'Favorites'
                                           ? 'No favorites yet'
                                           : 'Your Scribe Library is Empty',
-                                  style: TextStyle(color: context.appTextSecondary, fontFamily: GoogleFonts.manrope().fontFamily),
+                                  style: TextStyle(color: context.appTextSecondary, fontFamily: AppTheme.fontFamily),
                                 ),
                               )
                             : ListView.builder(
@@ -231,7 +231,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       return Center(
         child: Text(
           'No folders yet. Create one from the + menu.',
-          style: TextStyle(color: context.appTextSecondary, fontFamily: GoogleFonts.manrope().fontFamily),
+          style: TextStyle(color: context.appTextSecondary, fontFamily: AppTheme.fontFamily),
         ),
       );
     }
@@ -256,7 +256,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   folder.name,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    fontFamily: GoogleFonts.manrope().fontFamily,
+                    fontFamily: AppTheme.fontFamily,
                     color: context.appTextPrimary,
                   ),
                 ),
@@ -265,7 +265,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   style: TextStyle(
                     fontSize: 12,
                     color: context.appTextSecondary,
-                    fontFamily: GoogleFonts.manrope().fontFamily,
+                    fontFamily: AppTheme.fontFamily,
                   ),
                 ),
                 children: folderMeetings.isEmpty
@@ -274,7 +274,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           padding: const EdgeInsets.all(16),
                           child: Text(
                             'No meetings in this folder',
-                            style: TextStyle(color: context.appTextTertiary, fontFamily: GoogleFonts.manrope().fontFamily),
+                            style: TextStyle(color: context.appTextTertiary, fontFamily: AppTheme.fontFamily),
                           ),
                         ),
                       ]
@@ -299,7 +299,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 fontWeight: FontWeight.w700,
                 letterSpacing: 1.0,
                 color: context.appTextTertiary,
-                fontFamily: GoogleFonts.manrope().fontFamily,
+                fontFamily: AppTheme.fontFamily,
               ),
             ),
           ),
@@ -317,8 +317,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
     return GestureDetector(
       onTap: () => setState(() => _selectedTab = title),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 800),
-        curve: Curves.easeInOutCubic,
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeInOut,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected ? context.appPrimary : context.appSurfaceVariant,
@@ -329,7 +329,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
           style: TextStyle(
             color: isSelected ? Colors.white : context.appTextPrimary,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            fontFamily: GoogleFonts.manrope().fontFamily,
+            fontFamily: AppTheme.fontFamily,
             fontSize: 14,
           ),
         ),

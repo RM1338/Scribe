@@ -54,7 +54,7 @@ class MeetingListTile extends StatelessWidget {
                       color: context.appTextPrimary,
                       fontWeight: FontWeight.bold,
                       fontSize: 16,
-                      fontFamily: GoogleFonts.manrope().fontFamily,
+                      fontFamily: AppTheme.fontFamily,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
@@ -69,7 +69,7 @@ class MeetingListTile extends StatelessWidget {
                         style: TextStyle(
                           color: context.appTextSecondary, 
                           fontSize: 13,
-                          fontFamily: GoogleFonts.manrope().fontFamily,
+                          fontFamily: AppTheme.fontFamily,
                         ),
                       ),
                     ],
@@ -84,7 +84,7 @@ class MeetingListTile extends StatelessWidget {
                         style: TextStyle(
                           color: context.appTextSecondary, 
                           fontSize: 13,
-                          fontFamily: GoogleFonts.manrope().fontFamily,
+                          fontFamily: AppTheme.fontFamily,
                         ),
                       ),
                       if (meeting.speakerMapping.isNotEmpty) ...[
@@ -146,7 +146,7 @@ class MeetingListTile extends StatelessWidget {
                       fontSize: 10,
                       fontWeight: FontWeight.bold,
                       letterSpacing: 0.5,
-                      fontFamily: GoogleFonts.manrope().fontFamily,
+                      fontFamily: AppTheme.fontFamily,
                     ),
                   ),
                 ),

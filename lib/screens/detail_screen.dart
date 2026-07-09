@@ -15,6 +15,7 @@ class DetailScreen extends StatefulWidget {
 
 class _DetailScreenState extends State<DetailScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  double? _dragProgress;
 
   @override
   void initState() {
@@ -246,7 +247,7 @@ class _DetailScreenState extends State<DetailScreen> with SingleTickerProviderSt
           const SizedBox(height: 16),
           // We can try to parse Key Points or just display it with custom bullets
           ...text.split('\n').where((s) => s.trim().isNotEmpty).map((line) {
-            final content = line.trim().replaceFirst(RegExp(r'^[-*] '), '');
+            final content = line.trim().replaceFirst(RegExp(r'^[-*•]\s*'), '');
             return Padding(
               padding: const EdgeInsets.only(bottom: 12.0),
               child: Row(
@@ -448,19 +449,26 @@ class _DetailScreenState extends State<DetailScreen> with SingleTickerProviderSt
     final isPlaying = isPlayingThis && provider.isPlaying;
     
     // We will just use the exact logic of MiniPlayer but restyle it to match Granola
+    Duration currentPos = Duration.zero;
     double progress = 0.0;
-    String currentPos = '00:00';
-    String maxPos = live.duration;
+    String currentPosStr = '00:00';
+    String maxPosStr = '00:00';
 
     if (isPlayingThis) {
       if (provider.totalDuration.inMilliseconds > 0) {
-        progress = provider.playbackPosition.inMilliseconds / provider.totalDuration.inMilliseconds;
+        if (_dragProgress != null) {
+          progress = _dragProgress!;
+          currentPos = Duration(milliseconds: (_dragProgress! * provider.totalDuration.inMilliseconds).toInt());
+        } else {
+          progress = provider.playbackPosition.inMilliseconds / provider.totalDuration.inMilliseconds;
+          currentPos = provider.playbackPosition;
+        }
       }
-      currentPos = _formatDuration(provider.playbackPosition);
-      maxPos = _formatDuration(provider.totalDuration);
+      currentPosStr = _formatDuration(currentPos);
+      maxPosStr = _formatDuration(provider.totalDuration);
     } else {
       progress = 0.0;
-      currentPos = '00:00';
+      currentPosStr = '00:00';
     }
 
     return Container(
@@ -525,7 +533,7 @@ class _DetailScreenState extends State<DetailScreen> with SingleTickerProviderSt
           const SizedBox(height: 12),
           Row(
             children: [
-              Text(currentPos, style: GoogleFonts.manrope(color: context.appTextTertiary, fontSize: 11, fontWeight: FontWeight.w600)),
+              Text(currentPosStr, style: GoogleFonts.manrope(color: context.appTextTertiary, fontSize: 11, fontWeight: FontWeight.w600)),
               const SizedBox(width: 12),
               Expanded(
                 child: SliderTheme(
@@ -540,6 +548,16 @@ class _DetailScreenState extends State<DetailScreen> with SingleTickerProviderSt
                     value: progress.clamp(0.0, 1.0),
                     onChanged: (v) {
                       if (isPlayingThis) {
+                        setState(() {
+                          _dragProgress = v;
+                        });
+                      }
+                    },
+                    onChangeEnd: (v) {
+                      setState(() {
+                        _dragProgress = null;
+                      });
+                      if (isPlayingThis) {
                         final ms = (v * provider.totalDuration.inMilliseconds).toInt();
                         provider.seek(Duration(milliseconds: ms));
                       }
@@ -548,7 +566,7 @@ class _DetailScreenState extends State<DetailScreen> with SingleTickerProviderSt
                 ),
               ),
               const SizedBox(width: 12),
-              Text(maxPos, style: GoogleFonts.manrope(color: context.appTextTertiary, fontSize: 11, fontWeight: FontWeight.w600)),
+              Text(maxPosStr, style: GoogleFonts.manrope(color: context.appTextTertiary, fontSize: 11, fontWeight: FontWeight.w600)),
             ],
           ),
         ],

@@ -30,6 +30,9 @@ class AppColors {
 }
 
 class AppTheme {
+  // Cache the font family so it's not dynamically generated on every build within ListViews
+  static final String? fontFamily = GoogleFonts.manrope().fontFamily;
+
   static TextTheme _buildTextTheme(Color primary, Color secondary, Color tertiary) {
     final base = GoogleFonts.manropeTextTheme();
     return base.copyWith(

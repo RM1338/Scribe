@@ -400,8 +400,8 @@ class SettingsScreen extends StatelessWidget {
       builder: (context) {
         final isDark = Theme.of(context).brightness == Brightness.dark;
         return AnimatedContainer(
-          duration: const Duration(milliseconds: 800),
-          curve: Curves.easeInOutCubic,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
           clipBehavior: Clip.antiAlias,
           decoration: BoxDecoration(
             color: surfaceColor,

@@ -69,15 +69,6 @@ void showScribeCreateMenu(BuildContext context) {
               },
             ),
             _buildMenuAction(
-              icon: Icons.calendar_today_rounded,
-              title: 'Schedule Meeting',
-              subtitle: 'Plan a future recording session',
-              teal: scribeTeal,
-              primary: textPrimary,
-              secondary: textSecondary,
-              onTap: () => Navigator.pop(context),
-            ),
-            _buildMenuAction(
               icon: Icons.create_new_folder_rounded,
               title: 'Create Project Folder',
               subtitle: 'Organize your recordings and notes',

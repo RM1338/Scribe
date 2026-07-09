@@ -5,24 +5,45 @@ import '../models/meeting.dart';
 import '../providers/meeting_provider.dart';
 import 'detail_screen.dart';
 
-class PlayerScreen extends StatelessWidget {
+class PlayerScreen extends StatefulWidget {
   final Meeting meeting;
 
   const PlayerScreen({super.key, required this.meeting});
 
+  @override
+  State<PlayerScreen> createState() => _PlayerScreenState();
+}
+
+class _PlayerScreenState extends State<PlayerScreen> {
+  double? _dragProgress;
+
   String _formatDuration(Duration d) {
-    final m = d.inMinutes;
-    final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
-    return '$m:$s';
+    if (d.inHours > 0) {
+      return '${d.inHours}:${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
+    }
+    return '${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
   }
 
   @override
   Widget build(BuildContext context) {
     return Consumer<MeetingProvider>(
       builder: (context, provider, _) {
-        final isCurrent = provider.currentlyPlayingId == meeting.id;
-        final pos = isCurrent ? provider.playbackPosition : Duration.zero;
+        final isCurrent = provider.currentlyPlayingId == widget.meeting.id;
         final dur = isCurrent ? provider.totalDuration : Duration.zero;
+        
+        // If we are dragging, show the fake un-laggy drag position. Otherwise, show real position.
+        Duration currentPos = isCurrent ? provider.playbackPosition : Duration.zero;
+        double progress = 0.0;
+        
+        if (dur.inMilliseconds > 0) {
+          if (_dragProgress != null) {
+            progress = _dragProgress!;
+            currentPos = Duration(milliseconds: (_dragProgress! * dur.inMilliseconds).toInt());
+          } else {
+            progress = (currentPos.inMilliseconds / dur.inMilliseconds).clamp(0.0, 1.0);
+          }
+        }
+        
         final isPlaying = isCurrent && provider.isPlaying;
 
         return Scaffold(
@@ -37,28 +58,28 @@ class PlayerScreen extends StatelessWidget {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       IconButton(
-                        icon: Icon(Icons.keyboard_arrow_down_rounded, size: 32),
+                        icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 32),
                         onPressed: () => Navigator.pop(context),
                       ),
                       PopupMenuButton<String>(
                         color: context.appSurface,
                         surfaceTintColor: Colors.transparent,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        icon: Icon(Icons.more_horiz_rounded),
+                        icon: const Icon(Icons.more_horiz_rounded),
                         onSelected: (value) async {
                           if (value == 'rename') {
-                            final newTitle = await _showRenameDialog(context, meeting.title);
+                            final newTitle = await _showRenameDialog(context, widget.meeting.title);
                             if (newTitle != null) {
-                              provider.renameMeeting(meeting.id, newTitle);
+                              provider.renameMeeting(widget.meeting.id, newTitle);
                             }
                           } else if (value == 'delete') {
                             final confirm = await _showDeleteConfirm(context);
                             if (confirm == true) {
-                              provider.deleteMeeting(meeting.id);
+                              provider.deleteMeeting(widget.meeting.id);
                               if (context.mounted) Navigator.pop(context);
                             }
                           } else if (value == 'move') {
-                            _showMoveToFolderDialog(context, provider, meeting);
+                            _showMoveToFolderDialog(context, provider, widget.meeting);
                           }
                         },
                         itemBuilder: (context) => [
@@ -76,7 +97,7 @@ class PlayerScreen extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 32),
                     child: Column(
                       children: [
-                        Spacer(flex: 2),
+                        const Spacer(flex: 2),
                         // Artwork
                         Container(
                           width: 280,
@@ -96,11 +117,11 @@ class PlayerScreen extends StatelessWidget {
                               ),
                             ],
                           ),
-                          child: Center(
+                          child: const Center(
                             child: Icon(Icons.graphic_eq_rounded, color: Colors.white, size: 72),
                           ),
                         ),
-                        Spacer(flex: 2),
+                        const Spacer(flex: 2),
 
                         // Title
                         Align(
@@ -109,8 +130,8 @@ class PlayerScreen extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                meeting.title,
-                                style: TextStyle(
+                                widget.meeting.title,
+                                style: const TextStyle(
                                   fontSize: 22,
                                   fontWeight: FontWeight.w700,
                                   letterSpacing: -0.5,
@@ -118,9 +139,9 @@ class PlayerScreen extends StatelessWidget {
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                               ),
-                              SizedBox(height: 4),
+                              const SizedBox(height: 4),
                               Text(
-                                meeting.team,
+                                widget.meeting.team,
                                 style: TextStyle(
                                   fontSize: 16,
                                   color: context.appTextTertiary,
@@ -129,7 +150,7 @@ class PlayerScreen extends StatelessWidget {
                             ],
                           ),
                         ),
-                        SizedBox(height: 28),
+                        const SizedBox(height: 28),
 
                         // Scrubber
                         SliderTheme(
@@ -142,22 +163,30 @@ class PlayerScreen extends StatelessWidget {
                             overlayShape: SliderComponentShape.noOverlay,
                           ),
                           child: Slider(
-                            value: (dur.inMilliseconds > 0)
-                                ? (pos.inMilliseconds / dur.inMilliseconds).clamp(0.0, 1.0)
-                                : 0.0,
+                            value: progress,
                             onChanged: (val) {
+                              if (dur.inMilliseconds > 0) {
+                                setState(() {
+                                  _dragProgress = val;
+                                });
+                              }
+                            },
+                            onChangeEnd: (val) {
+                              setState(() {
+                                _dragProgress = null;
+                              });
                               if (dur.inMilliseconds > 0) {
                                 provider.seek(Duration(milliseconds: (val * dur.inMilliseconds).toInt()));
                               }
                             },
                           ),
                         ),
-                        SizedBox(height: 4),
+                        const SizedBox(height: 4),
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
                             Text(
-                              _formatDuration(pos),
+                              _formatDuration(currentPos),
                               style: TextStyle(fontSize: 12, color: context.appTextTertiary),
                             ),
                             Text(
@@ -176,11 +205,11 @@ class PlayerScreen extends StatelessWidget {
                               icon: Icon(Icons.replay_10_rounded, size: 32),
                               color: context.appTextPrimary,
                               onPressed: () {
-                                provider.seek(pos - const Duration(seconds: 10));
+                                provider.seek(currentPos - const Duration(seconds: 10));
                               },
                             ),
                             GestureDetector(
-                              onTap: () => provider.playMeeting(meeting),
+                              onTap: () => provider.playMeeting(widget.meeting),
                               child: Container(
                                 width: 64,
                                 height: 64,
@@ -199,7 +228,7 @@ class PlayerScreen extends StatelessWidget {
                               icon: Icon(Icons.forward_30_rounded, size: 32),
                               color: context.appTextPrimary,
                               onPressed: () {
-                                provider.seek(pos + const Duration(seconds: 30));
+                                provider.seek(currentPos + const Duration(seconds: 30));
                               },
                             ),
                           ],
@@ -241,10 +270,10 @@ class PlayerScreen extends StatelessWidget {
                             ),
                             IconButton(
                               icon: Icon(
-                                meeting.isFavorite ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded,
+                                widget.meeting.isFavorite ? Icons.bookmark_rounded : Icons.bookmark_outline_rounded,
                               ),
-                              color: meeting.isFavorite ? context.appPrimary : context.appTextSecondary,
-                              onPressed: () => provider.toggleFavorite(meeting.id),
+                              color: widget.meeting.isFavorite ? context.appPrimary : context.appTextSecondary,
+                              onPressed: () => provider.toggleFavorite(widget.meeting.id),
                             ),
                             IconButton(
                               icon: Icon(Icons.share_outlined),
@@ -256,7 +285,7 @@ class PlayerScreen extends StatelessWidget {
                               color: context.appPrimary,
                               onPressed: () {
                                 Navigator.of(context).pushReplacement(
-                                  MaterialPageRoute(builder: (_) => DetailScreen(meeting: meeting)),
+                                  MaterialPageRoute(builder: (_) => DetailScreen(meeting: widget.meeting)),
                                 );
                               },
                             ),
