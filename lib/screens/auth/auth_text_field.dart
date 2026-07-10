@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../theme/app_theme.dart';
 
 /// A bordered, rounded text field matching the card-field style used
-/// elsewhere in Scribe (see new_note_screen.dart's title/content fields).
+/// elsewhere in Scribe.
 class AuthTextField extends StatelessWidget {
   final TextEditingController controller;
   final String hintText;

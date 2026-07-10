@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
 import '../screens/upload_selection_screen.dart';
-import '../screens/new_note_screen.dart';
 import 'create_folder_dialog.dart';
 
 void showScribeCreateMenu(BuildContext context) {
@@ -74,23 +73,6 @@ void showScribeCreateMenu(BuildContext context) {
               onTap: () {
                 Navigator.pop(context); // Close the bottom sheet
                 showScribeCreateFolderDialog(context);
-              },
-            ),
-            _buildMenuAction(
-              icon: Icons.edit_note_rounded,
-              title: 'New Manual Note',
-              subtitle: 'Start writing a note from scratch',
-              teal: scribeTeal,
-              primary: textPrimary,
-              secondary: textSecondary,
-              onTap: () {
-                Navigator.pop(context); // Close the bottom sheet
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const ScribeNewNoteScreen(),
-                  ),
-                );
               },
             ),
 

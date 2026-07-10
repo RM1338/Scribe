@@ -909,6 +909,19 @@ class MeetingProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Saves the user's free-text note for [id]. An emptied note is stored as an
+  /// empty string rather than removed, which is enough for the UI to treat it as
+  /// absent; [copyWith] can't set the field back to null.
+  Future<void> updateNotes(String id, String notes) async {
+    final idx = _meetings.indexWhere((m) => m.id == id);
+    if (idx == -1) return;
+    final trimmed = notes.trim();
+    if ((_meetings[idx].notes ?? '') == trimmed) return;
+    _meetings[idx] = _meetings[idx].copyWith(notes: trimmed);
+    notifyListeners();
+    await _storage.saveMeetings(_meetings);
+  }
+
   void renameSpeaker(String meetingId, String speakerId, String newName) {
     final idx = _meetings.indexWhere((m) => m.id == meetingId);
     if (idx == -1) return;

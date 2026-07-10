@@ -282,14 +282,21 @@ class _DetailScreenState extends State<DetailScreen>
           _buildHighlightsCard(context, highlights),
         ],
         if (!hasContent)
-          Center(
-            child: Text(
-              provider.currentProcessingId == live.id
-                  ? 'Generating summary…'
-                  : 'No summary available.',
-              style: GoogleFonts.manrope(color: context.appTextSecondary),
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 24),
+            child: Center(
+              child: Text(
+                provider.currentProcessingId == live.id
+                    ? 'Generating summary…'
+                    : 'No summary yet.',
+                style: GoogleFonts.manrope(color: context.appTextSecondary),
+              ),
             ),
           ),
+        if (hasContent) const SizedBox(height: 16),
+        // The user's own note lives here regardless of whether the AI produced
+        // anything, so it's writable even while a recording is still processing.
+        _NotesCard(meeting: live),
       ],
     );
   }
@@ -1208,6 +1215,107 @@ class _DetailScreenState extends State<DetailScreen>
                 color: context.appPrimary,
                 fontWeight: FontWeight.w600,
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// The user's free-text note for a recording. Always editable; there's no save
+/// button -- it persists when the field loses focus and when the screen closes,
+/// which matches how the rest of Scribe treats a note as just part of the
+/// meeting rather than a separate document.
+class _NotesCard extends StatefulWidget {
+  const _NotesCard({required this.meeting});
+
+  final Meeting meeting;
+
+  @override
+  State<_NotesCard> createState() => _NotesCardState();
+}
+
+class _NotesCardState extends State<_NotesCard> {
+  late final TextEditingController _controller;
+  final FocusNode _focusNode = FocusNode();
+
+  /// Captured in didChangeDependencies so dispose can persist without touching
+  /// an inherited widget after the element is defunct.
+  MeetingProvider? _provider;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.meeting.notes ?? '');
+    _focusNode.addListener(() {
+      if (!_focusNode.hasFocus) _save();
+    });
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _provider = context.read<MeetingProvider>();
+  }
+
+  void _save() => _provider?.updateNotes(widget.meeting.id, _controller.text);
+
+  @override
+  void dispose() {
+    _save();
+    _focusNode.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: context.appShadowSubtle,
+        border: Border.all(
+          color: context.appSeparator.withValues(alpha: 0.5),
+          width: 0.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                Icons.edit_note_rounded,
+                color: context.appTextPrimary,
+                size: 20,
+              ),
+              const SizedBox(width: 8),
+              Text('My Notes', style: context.sectionTitle),
+            ],
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _controller,
+            focusNode: _focusNode,
+            maxLines: null,
+            minLines: 3,
+            textCapitalization: TextCapitalization.sentences,
+            style: GoogleFonts.manrope(
+              color: context.appTextPrimary,
+              fontSize: 15,
+              height: 1.5,
+            ),
+            decoration: InputDecoration(
+              isCollapsed: true,
+              hintText: 'Add your own notes…',
+              hintStyle: GoogleFonts.manrope(
+                color: context.appTextSecondary.withValues(alpha: 0.5),
+                fontSize: 15,
+              ),
+              border: InputBorder.none,
             ),
           ),
         ],

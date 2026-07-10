@@ -113,6 +113,11 @@ class Meeting {
   final Map<String, String> speakerMapping;
   final String? detectedLanguage;
 
+  /// The user's own free-text note for this recording -- things the transcript
+  /// and AI summary didn't capture. Null on every meeting created before this
+  /// field existed, and whenever the user has left it empty.
+  final String? notes;
+
   /// Cached translations, keyed by ISO-639-1 code. Populated on demand.
   final Map<String, MeetingTranslation> translations;
 
@@ -147,6 +152,7 @@ class Meeting {
     this.sentiment,
     this.speakerMapping = const {},
     this.detectedLanguage,
+    this.notes,
     this.translations = const {},
     this.completedActionItems = const {},
   });
@@ -243,6 +249,7 @@ class Meeting {
     String? sentiment,
     Map<String, String>? speakerMapping,
     String? detectedLanguage,
+    String? notes,
     Map<String, MeetingTranslation>? translations,
     Set<int>? completedActionItems,
   }) {
@@ -269,6 +276,7 @@ class Meeting {
       sentiment: sentiment ?? this.sentiment,
       speakerMapping: speakerMapping ?? this.speakerMapping,
       detectedLanguage: detectedLanguage ?? this.detectedLanguage,
+      notes: notes ?? this.notes,
       translations: translations ?? this.translations,
       completedActionItems: completedActionItems ?? this.completedActionItems,
     );
@@ -305,6 +313,7 @@ class Meeting {
       sentiment: json['sentiment'] as String?,
       speakerMapping: Map<String, String>.from(json['speakerMapping'] ?? {}),
       detectedLanguage: json['detectedLanguage'] as String?,
+      notes: json['notes'] as String?,
       // Absent on every meeting recorded before translation existed.
       translations: (json['translations'] as Map<String, dynamic>? ?? {}).map(
         (code, value) => MapEntry(
@@ -341,6 +350,7 @@ class Meeting {
     'sentiment': sentiment,
     'speakerMapping': speakerMapping,
     'detectedLanguage': detectedLanguage,
+    'notes': notes,
     'translations': translations.map((code, t) => MapEntry(code, t.toJson())),
     // Sorted so a meeting's JSON is stable across saves.
     'completedActionItems': completedActionItems.toList()..sort(),
