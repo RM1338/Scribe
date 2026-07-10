@@ -1,12 +1,22 @@
 import 'package:flutter/material.dart';
+import '../theme/app_theme.dart';
 
-Future<DateTime?> showScribeDatePicker(BuildContext context, DateTime currentSelectedDate) {
+Future<DateTime?> showScribeDatePicker(
+  BuildContext context,
+  DateTime currentSelectedDate,
+) {
   final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
   // Scribe Design System Colors
-  final Color bgColor = isDark ? const Color(0xFF1E1E1E) : const Color(0xFFFFFFFF);
-  final Color textPrimary = isDark ? const Color(0xFFE1E1E1) : const Color(0xFF1A1A1A);
-  final Color textSecondary = isDark ? const Color(0xFFAAAAAA) : const Color(0xFF6B6B6B);
+  final Color bgColor = isDark
+      ? const Color(0xFF1E1E1E)
+      : const Color(0xFFFFFFFF);
+  final Color textPrimary = isDark
+      ? const Color(0xFFE1E1E1)
+      : const Color(0xFF1A1A1A);
+  final Color textSecondary = isDark
+      ? const Color(0xFFAAAAAA)
+      : const Color(0xFF6B6B6B);
   const Color scribeTeal = Color(0xFF1A8C7E);
 
   return showModalBottomSheet<DateTime>(
@@ -18,15 +28,39 @@ Future<DateTime?> showScribeDatePicker(BuildContext context, DateTime currentSel
     ),
     builder: (context) {
       bool showMonthYearPicker = false;
-      DateTime viewMonth = DateTime(currentSelectedDate.year, currentSelectedDate.month);
+      DateTime viewMonth = DateTime(
+        currentSelectedDate.year,
+        currentSelectedDate.month,
+      );
       DateTime selectedDate = currentSelectedDate;
 
       return StatefulBuilder(
         builder: (context, setState) {
-          final int daysInMonth = DateTime(viewMonth.year, viewMonth.month + 1, 0).day;
-          final int firstWeekday = DateTime(viewMonth.year, viewMonth.month, 1).weekday;
-          final List<String> monthNames = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'];
-          
+          final int daysInMonth = DateTime(
+            viewMonth.year,
+            viewMonth.month + 1,
+            0,
+          ).day;
+          final int firstWeekday = DateTime(
+            viewMonth.year,
+            viewMonth.month,
+            1,
+          ).weekday;
+          final List<String> monthNames = [
+            'JANUARY',
+            'FEBRUARY',
+            'MARCH',
+            'APRIL',
+            'MAY',
+            'JUNE',
+            'JULY',
+            'AUGUST',
+            'SEPTEMBER',
+            'OCTOBER',
+            'NOVEMBER',
+            'DECEMBER',
+          ];
+
           return Padding(
             padding: const EdgeInsets.fromLTRB(20, 12, 20, 32),
             child: Column(
@@ -37,7 +71,9 @@ Future<DateTime?> showScribeDatePicker(BuildContext context, DateTime currentSel
                   width: 40,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+                    color: isDark
+                        ? Colors.white10
+                        : Colors.black.withValues(alpha: 0.05),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -56,20 +92,18 @@ Future<DateTime?> showScribeDatePicker(BuildContext context, DateTime currentSel
                       child: Row(
                         children: [
                           Text(
-                            showMonthYearPicker 
-                                ? '${viewMonth.year}' 
+                            showMonthYearPicker
+                                ? '${viewMonth.year}'
                                 : '${monthNames[viewMonth.month - 1]} ${viewMonth.year}',
-                            style: TextStyle(
-                              color: textPrimary,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
+                            style: context.dialogTitle,
                           ),
                           const SizedBox(width: 4),
                           Icon(
-                            showMonthYearPicker ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down, 
-                            color: scribeTeal, 
-                            size: 20
+                            showMonthYearPicker
+                                ? Icons.keyboard_arrow_up
+                                : Icons.keyboard_arrow_down,
+                            color: scribeTeal,
+                            size: 20,
                           ),
                         ],
                       ),
@@ -81,9 +115,15 @@ Future<DateTime?> showScribeDatePicker(BuildContext context, DateTime currentSel
                           onPressed: () {
                             setState(() {
                               if (showMonthYearPicker) {
-                                viewMonth = DateTime(viewMonth.year - 1, viewMonth.month);
+                                viewMonth = DateTime(
+                                  viewMonth.year - 1,
+                                  viewMonth.month,
+                                );
                               } else {
-                                viewMonth = DateTime(viewMonth.year, viewMonth.month - 1);
+                                viewMonth = DateTime(
+                                  viewMonth.year,
+                                  viewMonth.month - 1,
+                                );
                               }
                             });
                           },
@@ -93,9 +133,15 @@ Future<DateTime?> showScribeDatePicker(BuildContext context, DateTime currentSel
                           onPressed: () {
                             setState(() {
                               if (showMonthYearPicker) {
-                                viewMonth = DateTime(viewMonth.year + 1, viewMonth.month);
+                                viewMonth = DateTime(
+                                  viewMonth.year + 1,
+                                  viewMonth.month,
+                                );
                               } else {
-                                viewMonth = DateTime(viewMonth.year, viewMonth.month + 1);
+                                viewMonth = DateTime(
+                                  viewMonth.year,
+                                  viewMonth.month + 1,
+                                );
                               }
                             });
                           },
@@ -111,12 +157,13 @@ Future<DateTime?> showScribeDatePicker(BuildContext context, DateTime currentSel
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 3,
-                      childAspectRatio: 2.5,
-                      mainAxisSpacing: 10,
-                      crossAxisSpacing: 10,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 3,
+                          childAspectRatio: 2.5,
+                          mainAxisSpacing: 10,
+                          crossAxisSpacing: 10,
+                        ),
                     itemCount: 12,
                     itemBuilder: (context, index) {
                       bool isSelectedMonth = (index + 1) == viewMonth.month;
@@ -129,15 +176,25 @@ Future<DateTime?> showScribeDatePicker(BuildContext context, DateTime currentSel
                         },
                         child: Container(
                           decoration: BoxDecoration(
-                            color: isSelectedMonth ? scribeTeal : Colors.transparent,
+                            color: isSelectedMonth
+                                ? scribeTeal
+                                : Colors.transparent,
                             borderRadius: BorderRadius.circular(12),
-                            border: isSelectedMonth ? null : Border.all(color: isDark ? Colors.white10 : Colors.black12),
+                            border: isSelectedMonth
+                                ? null
+                                : Border.all(
+                                    color: isDark
+                                        ? Colors.white10
+                                        : Colors.black12,
+                                  ),
                           ),
                           child: Center(
                             child: Text(
                               monthNames[index].substring(0, 3), // Short name
                               style: TextStyle(
-                                color: isSelectedMonth ? Colors.white : textPrimary,
+                                color: isSelectedMonth
+                                    ? Colors.white
+                                    : textPrimary,
                                 fontWeight: FontWeight.bold,
                                 fontSize: 14,
                               ),
@@ -151,21 +208,23 @@ Future<DateTime?> showScribeDatePicker(BuildContext context, DateTime currentSel
                   // 3. Weekday Labels
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((day) {
-                      return Expanded(
-                        child: Center(
-                          child: Text(
-                            day,
-                            style: TextStyle(
-                              color: textSecondary,
-                              fontSize: 10,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: 1.0,
+                    children: ['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN']
+                        .map((day) {
+                          return Expanded(
+                            child: Center(
+                              child: Text(
+                                day,
+                                style: TextStyle(
+                                  color: textSecondary,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: 1.0,
+                                ),
+                              ),
                             ),
-                          ),
-                        ),
-                      );
-                    }).toList(),
+                          );
+                        })
+                        .toList(),
                   ),
                   const SizedBox(height: 16),
 
@@ -173,11 +232,12 @@ Future<DateTime?> showScribeDatePicker(BuildContext context, DateTime currentSel
                   GridView.builder(
                     shrinkWrap: true,
                     physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 7,
-                      mainAxisSpacing: 10,
-                      crossAxisSpacing: 10,
-                    ),
+                    gridDelegate:
+                        const SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: 7,
+                          mainAxisSpacing: 10,
+                          crossAxisSpacing: 10,
+                        ),
                     itemCount: 42,
                     itemBuilder: (context, index) {
                       final int dayOffset = index - (firstWeekday - 1);
@@ -185,14 +245,19 @@ Future<DateTime?> showScribeDatePicker(BuildContext context, DateTime currentSel
                         return const SizedBox.shrink();
                       }
                       int day = dayOffset + 1;
-                      bool isSelected = selectedDate.year == viewMonth.year && 
-                                        selectedDate.month == viewMonth.month && 
-                                        selectedDate.day == day;
+                      bool isSelected =
+                          selectedDate.year == viewMonth.year &&
+                          selectedDate.month == viewMonth.month &&
+                          selectedDate.day == day;
 
                       return GestureDetector(
                         onTap: () {
                           setState(() {
-                            selectedDate = DateTime(viewMonth.year, viewMonth.month, day);
+                            selectedDate = DateTime(
+                              viewMonth.year,
+                              viewMonth.month,
+                              day,
+                            );
                           });
                         },
                         child: Container(
@@ -205,7 +270,9 @@ Future<DateTime?> showScribeDatePicker(BuildContext context, DateTime currentSel
                               '$day',
                               style: TextStyle(
                                 color: isSelected ? Colors.white : textPrimary,
-                                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                                fontWeight: isSelected
+                                    ? FontWeight.bold
+                                    : FontWeight.normal,
                                 fontSize: 14,
                               ),
                             ),
@@ -233,7 +300,10 @@ Future<DateTime?> showScribeDatePicker(BuildContext context, DateTime currentSel
                     ),
                     child: const Text(
                       'Select',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
@@ -245,4 +315,3 @@ Future<DateTime?> showScribeDatePicker(BuildContext context, DateTime currentSel
     },
   );
 }
-

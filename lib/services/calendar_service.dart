@@ -80,16 +80,22 @@ class CalendarService {
     return allEvents;
   }
 
-  Future<bool> addEvent(String title, DateTime startTime, DateTime endTime) async {
+  Future<bool> addEvent(
+    String title,
+    DateTime startTime,
+    DateTime endTime,
+  ) async {
     final hasPermissions = await requestPermissions();
     if (!hasPermissions) return false;
 
     final calendars = await getCalendars();
-    final writableCalendars = calendars.where((c) => c.isReadOnly == false).toList();
+    final writableCalendars = calendars
+        .where((c) => c.isReadOnly == false)
+        .toList();
     if (writableCalendars.isEmpty) return false;
 
     final calendar = writableCalendars.first;
-    
+
     final event = Event(
       calendar.id,
       title: title,

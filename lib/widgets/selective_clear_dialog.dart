@@ -49,21 +49,13 @@ class _SelectiveClearDialogState extends State<SelectiveClearDialog> {
 
   @override
   Widget build(BuildContext context) {
-    final textPrimary = context.appTextPrimary;
     final textSecondary = context.appTextSecondary;
     final scribeTeal = context.appPrimary;
 
     return AlertDialog(
       backgroundColor: context.appSurface,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-      title: Text(
-        'Selective Clear',
-        style: GoogleFonts.manrope(
-          color: textPrimary,
-          fontWeight: FontWeight.bold,
-          fontSize: 20,
-        ),
-      ),
+      title: Text('Selective Clear', style: context.dialogTitle),
       content: _loading
           ? const SizedBox(
               height: 100,
@@ -117,17 +109,19 @@ class _SelectiveClearDialogState extends State<SelectiveClearDialog> {
           onPressed: (_clearRecordings || _clearMetadata || _clearHistory)
               ? () {
                   context.read<MeetingProvider>().clearSelective(
-                        recordings: _clearRecordings,
-                        metadata: _clearMetadata,
-                        history: _clearHistory,
-                      );
+                    recordings: _clearRecordings,
+                    metadata: _clearMetadata,
+                    history: _clearHistory,
+                  );
                   Navigator.pop(context);
                 }
               : null,
           style: ElevatedButton.styleFrom(
             backgroundColor: _clearMetadata ? Colors.redAccent : scribeTeal,
             foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
           child: Text(
             'Clear Selected',
@@ -138,7 +132,13 @@ class _SelectiveClearDialogState extends State<SelectiveClearDialog> {
     );
   }
 
-  Widget _buildOption(String title, int size, bool value, ValueChanged<bool?> onChanged, {bool isDangerous = false}) {
+  Widget _buildOption(
+    String title,
+    int size,
+    bool value,
+    ValueChanged<bool?> onChanged, {
+    bool isDangerous = false,
+  }) {
     return CheckboxListTile(
       title: Text(
         title,
@@ -150,7 +150,10 @@ class _SelectiveClearDialogState extends State<SelectiveClearDialog> {
       ),
       subtitle: Text(
         _formatSize(size),
-        style: GoogleFonts.manrope(color: context.appTextTertiary, fontSize: 12),
+        style: GoogleFonts.manrope(
+          color: context.appTextTertiary,
+          fontSize: 12,
+        ),
       ),
       value: value,
       onChanged: onChanged,

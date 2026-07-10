@@ -11,7 +11,9 @@ void showScribeCreateFolderDialog(BuildContext context) {
   final Color bgColor = context.appSurface;
   final Color textPrimary = context.appTextPrimary;
   final Color textSecondary = context.appTextSecondary;
-  final Color borderColor = isDark ? const Color(0xFF2C2C2C) : const Color(0xFFE8E6E1);
+  final Color borderColor = isDark
+      ? const Color(0xFF2C2C2C)
+      : const Color(0xFFE8E6E1);
   final Color scribeTeal = context.appPrimary;
 
   showDialog(
@@ -32,40 +34,37 @@ void showScribeCreateFolderDialog(BuildContext context) {
           return AlertDialog(
             backgroundColor: bgColor,
             surfaceTintColor: Colors.transparent,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-            title: Text(
-              'New Project Folder',
-              style: GoogleFonts.manrope(
-                color: textPrimary,
-                fontWeight: FontWeight.bold,
-                fontSize: 20,
-              ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
             ),
+            title: Text('New Project Folder', style: context.dialogTitle),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const SizedBox(height: 8),
                 // 1. Folder Name Input
-                Text(
-                  'FOLDER NAME',
-                  style: GoogleFonts.manrope(
-                    color: textSecondary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                  ),
-                ),
+                Text('FOLDER NAME', style: context.sectionLabel),
                 const SizedBox(height: 12),
                 TextField(
                   controller: nameController,
-                  style: GoogleFonts.manrope(color: textPrimary, fontWeight: FontWeight.w500),
+                  style: GoogleFonts.manrope(
+                    color: textPrimary,
+                    fontWeight: FontWeight.w500,
+                  ),
                   decoration: InputDecoration(
                     hintText: 'e.g. Q4 Strategy Syncs',
-                    hintStyle: GoogleFonts.manrope(color: textSecondary.withValues(alpha: 0.5)),
+                    hintStyle: GoogleFonts.manrope(
+                      color: textSecondary.withValues(alpha: 0.5),
+                    ),
                     filled: true,
-                    fillColor: isDark ? Colors.black.withValues(alpha: 0.2) : Colors.black.withValues(alpha: 0.03),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    fillColor: isDark
+                        ? Colors.black.withValues(alpha: 0.2)
+                        : Colors.black.withValues(alpha: 0.03),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
                     enabledBorder: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(16),
                       borderSide: BorderSide(color: borderColor),
@@ -79,15 +78,7 @@ void showScribeCreateFolderDialog(BuildContext context) {
                 const SizedBox(height: 32),
 
                 // 2. Color Tag Selection
-                Text(
-                  'COLOR TAG',
-                  style: GoogleFonts.manrope(
-                    color: textSecondary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                  ),
-                ),
+                Text('COLOR TAG', style: context.sectionLabel),
                 const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -106,17 +97,25 @@ void showScribeCreateFolderDialog(BuildContext context) {
                             color: isSelected ? scribeTeal : Colors.transparent,
                             width: 3,
                           ),
-                          boxShadow: isSelected ? [
-                            BoxShadow(
-                              color: swatchColors[index].withValues(alpha: 0.4),
-                              blurRadius: 10,
-                              offset: const Offset(0, 4),
-                            )
-                          ] : null,
+                          boxShadow: isSelected
+                              ? [
+                                  BoxShadow(
+                                    color: swatchColors[index].withValues(
+                                      alpha: 0.4,
+                                    ),
+                                    blurRadius: 10,
+                                    offset: const Offset(0, 4),
+                                  ),
+                                ]
+                              : null,
                         ),
-                        child: isSelected 
-                          ? const Icon(Icons.check_rounded, color: Colors.white, size: 24) 
-                          : null,
+                        child: isSelected
+                            ? const Icon(
+                                Icons.check_rounded,
+                                color: Colors.white,
+                                size: 24,
+                              )
+                            : null,
                       ),
                     );
                   }),
@@ -133,14 +132,14 @@ void showScribeCreateFolderDialog(BuildContext context) {
                       onPressed: () => Navigator.pop(context),
                       style: TextButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                       ),
                       child: Text(
                         'Cancel',
-                        style: GoogleFonts.manrope(
+                        style: context.buttonLabel.copyWith(
                           color: textSecondary,
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
                         ),
                       ),
                     ),
@@ -153,7 +152,10 @@ void showScribeCreateFolderDialog(BuildContext context) {
                         final name = nameController.text.trim();
                         if (name.isNotEmpty) {
                           final provider = context.read<MeetingProvider>();
-                          provider.createFolder(name, swatchColors[selectedColorIndex].toARGB32());
+                          provider.createFolder(
+                            name,
+                            swatchColors[selectedColorIndex].toARGB32(),
+                          );
                         }
                         Navigator.pop(context);
                       },
@@ -161,16 +163,12 @@ void showScribeCreateFolderDialog(BuildContext context) {
                         backgroundColor: scribeTeal,
                         foregroundColor: Colors.white,
                         elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
-                      child: Text(
-                        'Create Folder',
-                        style: GoogleFonts.manrope(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
+                      child: Text('Create Folder', style: context.buttonLabel),
                     ),
                   ),
                 ],

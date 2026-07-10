@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(flutter pub *)",
+      "Skill(run)",
+      "Bash(flutter run *)",
+      "Bash(flutter devices *)",
+      "Bash(adb devices *)",
+      "Bash(adb kill-server *)",
+      "Bash(adb start-server *)",
+      "Bash(flutter --version)",
+      "Bash(./gradlew assembleDebug)",
+      "Bash(flutter clean *)",
+      "Bash(git checkout *)",
+      "Bash(flutter analyze *)",
+      "WebFetch(domain:supabase.com)",
+      "WebSearch",
+      "WebFetch(domain:resend.com)",
+      "Bash(flutter test *)",
+      "Bash(python3 *)",
+      "Bash(sed -i 's|const OtpVerificationScreen\\(mode: OtpMode.signup\\)|const OtpVerificationScreen\\(\\)|' lib/screens/auth/sign_up_screen.dart)",
+      "Bash(sed -i \"/^import 'otp_verification_screen.dart';$/d\" lib/screens/auth/sign_in_screen.dart)",
+      "Bash(git stash *)"
+    ]
+  }
+}

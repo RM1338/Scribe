@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:record/record.dart';
 import 'package:speech_to_text/speech_to_text.dart';
@@ -11,6 +10,9 @@ import '../models/folder.dart';
 import '../services/storage_service.dart';
 import '../services/transcription_service.dart';
 import '../services/summary_service.dart';
+import '../services/translation_service.dart';
+import '../services/device_identity.dart';
+import '../services/device_quota_service.dart';
 import 'settings_provider.dart';
 
 enum RecordingState { idle, recording, paused }
@@ -18,9 +20,14 @@ enum RecordingState { idle, recording, paused }
 enum ProcessingState { idle, transcribing, summarizing }
 
 class MeetingProvider with ChangeNotifier {
-  final StorageService _storage = StorageService();
+  StorageService _storage = StorageService();
+  String? _userId;
   final TranscriptionService _transcription = TranscriptionService();
   final SummaryService _summary = SummaryService();
+  final TranslationService _translation = TranslationService();
+  final DeviceQuotaService _quota = DeviceQuotaService(
+    identity: DeviceIdentity(),
+  );
   final AudioRecorder _recorder = AudioRecorder();
   final SpeechToText _speechToText = SpeechToText();
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -40,8 +47,15 @@ class MeetingProvider with ChangeNotifier {
   String _currentLiveWords = '';
   String? _currentProcessingId;
   String? _ollamaStatus; // null = not checked, 'ok', 'unavailable'
+
+  /// Meeting id currently being translated, and how far along it is. Only one
+  /// translation runs at a time -- they are long, and they contend for the same
+  /// Groq rate limit as transcription.
+  String? _translatingMeetingId;
+  double _translationProgress = 0;
+  String? _translationError;
   final _notificationController = StreamController<String>.broadcast();
-  
+
   // Advanced Search Filters
   DateTime? _filterStartDate;
   DateTime? _filterEndDate;
@@ -53,21 +67,33 @@ class MeetingProvider with ChangeNotifier {
   // Playback state
   bool _isPlaying = false;
   double _playbackSpeed = 1.0;
-  Duration _playbackPosition = Duration.zero;
   Duration _totalDuration = Duration.zero;
   String? _currentlyPlayingId;
 
-  final List<String> filters = ['All', 'Transcribed', 'In Progress', 'Favorites'];
+  /// Playback position, deliberately kept off [notifyListeners].
+  ///
+  /// The player emits a position roughly five times a second. Routing that
+  /// through the provider's own listeners would rebuild every [Consumer] in the
+  /// tree -- including whole screens -- at that rate. Widgets that actually care
+  /// about the playhead (scrubbers, the synced transcript) subscribe to this
+  /// notifier instead, so the rebuild stays scoped to them.
+  final ValueNotifier<Duration> position = ValueNotifier(Duration.zero);
+
+  final List<String> filters = [
+    'All',
+    'Transcribed',
+    'In Progress',
+    'Favorites',
+  ];
 
   MeetingProvider() {
     _audioPlayer.onPlayerStateChanged.listen((state) {
       _isPlaying = state == PlayerState.playing;
       notifyListeners();
     });
-    _audioPlayer.onPositionChanged.listen((pos) {
-      _playbackPosition = pos;
-      notifyListeners();
-    });
+    // ValueNotifier suppresses a notification when the value is unchanged, so a
+    // paused player costs nothing here.
+    _audioPlayer.onPositionChanged.listen((pos) => position.value = pos);
     _audioPlayer.onDurationChanged.listen((dur) {
       _totalDuration = dur;
       notifyListeners();
@@ -77,18 +103,26 @@ class MeetingProvider with ChangeNotifier {
   // ── Getters ───────────────────────────────────────────────
   List<Meeting> get meetings {
     List<Meeting> filtered = List.from(_meetings);
-    
+
     if (_selectedFolderId != null) {
-      filtered = filtered.where((m) => m.folderId == _selectedFolderId).toList();
+      filtered = filtered
+          .where((m) => m.folderId == _selectedFolderId)
+          .toList();
     }
 
     switch (_selectedFilter) {
       case 'Transcribed':
-        return filtered.where((m) => m.status == MeetingStatus.transcribed).toList();
+        return filtered
+            .where((m) => m.status == MeetingStatus.transcribed)
+            .toList();
       case 'In Progress':
-        return filtered.where((m) =>
-            m.status == MeetingStatus.inProgress ||
-            m.status == MeetingStatus.processing).toList();
+        return filtered
+            .where(
+              (m) =>
+                  m.status == MeetingStatus.inProgress ||
+                  m.status == MeetingStatus.processing,
+            )
+            .toList();
       case 'Favorites':
         return filtered.where((m) => m.isFavorite).toList();
       default:
@@ -109,8 +143,92 @@ class MeetingProvider with ChangeNotifier {
     final combined = '$_liveTranscriptBuffer$_currentLiveWords'.trim();
     return combined.isEmpty ? '' : combined;
   }
+
   Stream<String> get notificationStream => _notificationController.stream;
   String? get currentProcessingId => _currentProcessingId;
+
+  bool isTranslating(String meetingId) => _translatingMeetingId == meetingId;
+  double get translationProgress => _translationProgress;
+  String? get translationError => _translationError;
+
+  void clearTranslationError() {
+    if (_translationError == null) return;
+    _translationError = null;
+    notifyListeners();
+  }
+
+  /// Ticks or un-ticks the action item at [index]. Persisted immediately -- a
+  /// checklist that forgets on relaunch is worse than no checklist.
+  Future<void> toggleActionItem(String meetingId, int index) async {
+    final position = _meetings.indexWhere((m) => m.id == meetingId);
+    if (position == -1) return;
+
+    final meeting = _meetings[position];
+    if (index < 0 || index >= meeting.actionItems.length) return;
+
+    final completed = Set<int>.from(meeting.completedActionItems);
+    if (!completed.remove(index)) completed.add(index);
+
+    _meetings[position] = meeting.copyWith(completedActionItems: completed);
+    notifyListeners();
+    await _storage.saveMeetings(_meetings);
+  }
+
+  /// Translates [meetingId] into [languageCode] and caches the result on the
+  /// meeting. A no-op when a usable translation already exists, so re-opening a
+  /// translated transcript costs nothing.
+  ///
+  /// Returns true if a translation is available afterwards.
+  Future<bool> translateMeeting(String meetingId, String languageCode) async {
+    final index = _meetings.indexWhere((m) => m.id == meetingId);
+    if (index == -1) return false;
+
+    if (_meetings[index].hasTranslation(languageCode)) return true;
+    if (_translatingMeetingId != null) return false;
+
+    _translatingMeetingId = meetingId;
+    _translationProgress = 0;
+    _translationError = null;
+    notifyListeners();
+
+    try {
+      final translation = await _translation.translateMeeting(
+        _meetings[index],
+        targetLanguageCode: languageCode,
+        apiKey: _settings?.groqApiKey ?? '',
+        onProgress: (p) {
+          _translationProgress = p;
+          notifyListeners();
+        },
+      );
+
+      // Re-resolve: the list may have been reloaded or reordered while the
+      // network call was in flight.
+      final current = _meetings.indexWhere((m) => m.id == meetingId);
+      if (current == -1) return false;
+
+      _meetings[current] = _meetings[current].copyWith(
+        translations: {
+          ..._meetings[current].translations,
+          languageCode: translation,
+        },
+      );
+      await _storage.saveMeetings(_meetings);
+      return true;
+    } on TranslationException catch (e) {
+      _translationError = e.message;
+      return false;
+    } catch (e) {
+      _translationError =
+          'Translation failed. Check your connection and try again.';
+      return false;
+    } finally {
+      _translatingMeetingId = null;
+      _translationProgress = 0;
+      notifyListeners();
+    }
+  }
+
   bool get isOllamaAvailable => _ollamaStatus == 'ok';
 
   Meeting? get currentlyPlayingMeeting {
@@ -124,7 +242,7 @@ class MeetingProvider with ChangeNotifier {
 
   bool get isPlaying => _isPlaying;
   double get playbackSpeed => _playbackSpeed;
-  Duration get playbackPosition => _playbackPosition;
+  Duration get playbackPosition => position.value;
   Duration get totalDuration => _totalDuration;
   String? get currentlyPlayingId => _currentlyPlayingId;
 
@@ -137,89 +255,33 @@ class MeetingProvider with ChangeNotifier {
   bool get filterActionItemsOnly => _filterActionItemsOnly;
 
   // Smart Categories
-  List<Meeting> get actionOrientedMeetings => _meetings.where((m) => m.actionItems.isNotEmpty).toList();
-  List<Meeting> get highlightMeetings => _meetings.where((m) => m.highlights.isNotEmpty).toList();
+  List<Meeting> get actionOrientedMeetings =>
+      _meetings.where((m) => m.actionItems.isNotEmpty).toList();
+  List<Meeting> get highlightMeetings =>
+      _meetings.where((m) => m.highlights.isNotEmpty).toList();
   List<Meeting> get shortMeetings => _meetings.where((m) {
-        // Duration is usually "Mm Ss" or "Ss". 
-        // Simple approximation: check if "h" or > 5m
-        if (m.duration.contains('h')) return false;
-        final mMatch = RegExp(r'(\d+)m').firstMatch(m.duration);
-        if (mMatch != null) {
-          final minutes = int.parse(mMatch.group(1)!);
-          return minutes < 5;
-        }
-        return true; // Just seconds
-      }).toList();
+    // Duration is usually "Mm Ss" or "Ss".
+    // Simple approximation: check if "h" or > 5m
+    if (m.duration.contains('h')) return false;
+    final mMatch = RegExp(r'(\d+)m').firstMatch(m.duration);
+    if (mMatch != null) {
+      final minutes = int.parse(mMatch.group(1)!);
+      return minutes < 5;
+    }
+    return true; // Just seconds
+  }).toList();
 
   List<String> get uniqueTeams => _meetings.map((m) => m.team).toSet().toList();
-  List<String> get uniqueSpeakers => _meetings.expand((m) => m.speakers).toSet().toList();
-  List<String> get uniqueTags => _meetings.expand((m) => m.tags).toSet().toList();
+  List<String> get uniqueSpeakers =>
+      _meetings.expand((m) => m.speakers).toSet().toList();
+  List<String> get uniqueTags =>
+      _meetings.expand((m) => m.tags).toSet().toList();
 
   // ── Initialisation ───────────────────────────────────────
   Future<void> init() async {
     if (_initialized) return;
-    
+
     _meetings = await _storage.loadMeetings();
-    
-    // Add sample data if empty to show off functionality
-    if (_meetings.isEmpty) {
-      _meetings = [
-        Meeting(
-          id: 'sample-1',
-          title: 'Project Antigravity Kickoff',
-          team: 'Engineering',
-          date: 'March 5, 2026',
-          duration: '45 min',
-          status: MeetingStatus.transcribed,
-          attendeeInitials: ['RN', 'JD', 'AS'],
-          summary: 'Initial discussion about the new AI coding assistant architecture.',
-          transcript: 'Let\'s talk about how Antigravity will work with local models.',
-          actionItems: ['Define API boundary', 'Select LLM architecture'],
-          highlights: ['Decided to use Faster-Whisper for STT'],
-          recordedAt: DateTime.now().subtract(const Duration(days: 1)),
-          speakers: ['Ronel', 'Jane'],
-          tags: ['action-item', 'design'],
-          topics: ['Architecture', 'AI'],
-          sentiment: 'Positive',
-        ),
-        Meeting(
-          id: 'sample-3',
-          title: 'Weekly Sync',
-          team: 'Product',
-          date: 'March 7, 2026',
-          duration: '30 min',
-          status: MeetingStatus.transcribed,
-          attendeeInitials: ['SK', 'JD'],
-          summary: 'Review of current sprint progress and upcoming features.',
-          transcript: 'We need to prioritize the user feedback for the new dashboard.',
-          actionItems: ['Update Jira tickets', 'Schedule design review'],
-          highlights: ['Key Decisions: Prioritize dashboard feedback'],
-          recordedAt: DateTime.now().subtract(const Duration(hours: 12)),
-          speakers: ['Sarah', 'John'],
-          tags: ['sync', 'product'],
-          topics: ['Sprint Review', 'Dashboard'],
-          sentiment: 'Neutral',
-        ),
-        Meeting(
-          id: 'sample-2',
-          title: 'Emergency Bug Bash',
-          team: 'QA',
-          date: 'March 6, 2026',
-          duration: '15 min',
-          status: MeetingStatus.transcribed,
-          attendeeInitials: ['JD', 'PK'],
-          summary: 'Critical review of the search filters bug.',
-          transcript: 'The search filters are not rebuilding the bottom sheet properly.',
-          actionItems: ['Fix bottom sheet Consumer'],
-          recordedAt: DateTime.now(),
-          speakers: ['Paul', 'Jane'],
-          tags: ['critical', 'bug'],
-          topics: ['UI', 'Search'],
-          sentiment: 'Critical',
-        ),
-      ];
-      await _storage.saveMeetings(_meetings);
-    }
 
     final folderData = await _storage.loadFolders();
     _folders = folderData.map((e) => Folder.fromJson(e)).toList();
@@ -242,11 +304,42 @@ class MeetingProvider with ChangeNotifier {
     notifyListeners();
   }
 
+  /// Rebinds this provider to [userId], loading that account's data.
+  ///
+  /// Called whenever the signed-in user changes -- including sign-out, where
+  /// [userId] is null. In-memory collections are cleared before the reload so
+  /// the previous account's meetings can never be observed by the next one,
+  /// even for the moment between sign-in and the first disk read completing.
+  void setUser(String? userId) {
+    if (_userId == userId) return;
+    _userId = userId;
+
+    _meetings = [];
+    _folders = [];
+    _recentSearches = [];
+    _selectedFilter = 'All';
+    _selectedFolderId = null;
+    _initialized = false;
+    _storage = StorageService(userId: userId);
+
+    // This runs from ChangeNotifierProxyProvider.update, i.e. during build,
+    // where notifying listeners synchronously would throw. Defer both the
+    // notification and the reload to after the current frame.
+    scheduleMicrotask(() async {
+      notifyListeners();
+      if (userId != null) {
+        await _storage.migrateLegacyData();
+        await init();
+      }
+    });
+  }
+
   // ── Filter ───────────────────────────────────────────────
   void setFilter(String filter) {
     if (filters.contains(filter)) {
       _selectedFilter = filter;
-      _selectedFolderId = null; // Clear folder filter when changing global filter
+      _selectedFolderId =
+          null; // Clear folder filter when changing global filter
       notifyListeners();
     }
   }
@@ -281,6 +374,7 @@ class MeetingProvider with ChangeNotifier {
     if (_selectedFolderId == folderId) _selectedFolderId = null;
     notifyListeners();
   }
+
   Future<void> moveMeetingToFolder(String meetingId, String? folderId) async {
     final index = _meetings.indexWhere((m) => m.id == meetingId);
     if (index != -1) {
@@ -294,11 +388,12 @@ class MeetingProvider with ChangeNotifier {
   Future<void> addRecentSearch(String query) async {
     final q = query.trim();
     if (q.isEmpty) return;
-    
+
     _recentSearches.remove(q);
     _recentSearches.insert(0, q);
-    if (_recentSearches.length > 10) _recentSearches = _recentSearches.sublist(0, 10);
-    
+    if (_recentSearches.length > 10)
+      _recentSearches = _recentSearches.sublist(0, 10);
+
     await _storage.saveRecentSearches(_recentSearches);
     notifyListeners();
   }
@@ -356,11 +451,15 @@ class MeetingProvider with ChangeNotifier {
 
   List<Meeting> searchMeetings(String query) {
     final lowerQuery = query.toLowerCase();
-    
+
     // Parse shorthand @speaker and #tag
-    final speakerTokens = RegExp(r'@(\w+)').allMatches(lowerQuery).map((m) => m.group(1)!.toLowerCase()).toList();
-    final tagTokens = RegExp(r'#([\w-]+)').allMatches(lowerQuery).map((m) => m.group(1)!.toLowerCase()).toList();
-    
+    final speakerTokens = RegExp(
+      r'@(\w+)',
+    ).allMatches(lowerQuery).map((m) => m.group(1)!.toLowerCase()).toList();
+    final tagTokens = RegExp(
+      r'#([\w-]+)',
+    ).allMatches(lowerQuery).map((m) => m.group(1)!.toLowerCase()).toList();
+
     // Remove tokens from search query text
     String cleanQuery = lowerQuery
         .replaceAll(RegExp(r'@\w+'), '')
@@ -370,7 +469,8 @@ class MeetingProvider with ChangeNotifier {
     return _meetings.where((m) {
       // 1. Text Search (title, transcript, summary, topics)
       if (cleanQuery.isNotEmpty) {
-        bool match = m.title.toLowerCase().contains(cleanQuery) ||
+        bool match =
+            m.title.toLowerCase().contains(cleanQuery) ||
             (m.transcript?.toLowerCase().contains(cleanQuery) ?? false) ||
             (m.summary?.toLowerCase().contains(cleanQuery) ?? false) ||
             m.topics.any((t) => t.toLowerCase().contains(cleanQuery));
@@ -379,9 +479,11 @@ class MeetingProvider with ChangeNotifier {
 
       // 2. Speaker Shorthand & Filter
       if (speakerTokens.isNotEmpty) {
-        bool match = speakerTokens.every((token) => 
-            m.speakers.any((s) => s.toLowerCase().contains(token)) ||
-            m.attendeeInitials.any((i) => i.toLowerCase() == token));
+        bool match = speakerTokens.every(
+          (token) =>
+              m.speakers.any((s) => s.toLowerCase().contains(token)) ||
+              m.attendeeInitials.any((i) => i.toLowerCase() == token),
+        );
         if (!match) return false;
       }
       if (_filterSpeakers.isNotEmpty) {
@@ -390,7 +492,9 @@ class MeetingProvider with ChangeNotifier {
 
       // 3. Tag Shorthand & Filter
       if (tagTokens.isNotEmpty) {
-        bool match = tagTokens.every((token) => m.tags.any((t) => t.toLowerCase() == token));
+        bool match = tagTokens.every(
+          (token) => m.tags.any((t) => t.toLowerCase() == token),
+        );
         if (!match) return false;
       }
       if (_filterTags.isNotEmpty) {
@@ -409,7 +513,8 @@ class MeetingProvider with ChangeNotifier {
       if (_filterActionItemsOnly && m.actionItems.isEmpty) return false;
 
       // 6. Sentiment
-      if (_filterSentiment != null && m.sentiment != _filterSentiment) return false;
+      if (_filterSentiment != null && m.sentiment != _filterSentiment)
+        return false;
 
       return true;
     }).toList();
@@ -424,10 +529,9 @@ class MeetingProvider with ChangeNotifier {
     _recordingDuration = Duration.zero;
     notifyListeners();
 
-    final dir = await getApplicationDocumentsDirectory();
+    final recordingsDir = await _storage.recordingsDir();
     final id = DateTime.now().millisecondsSinceEpoch.toString();
-    final path = p.join(dir.path, 'recordings', '$id.wav');
-    await Directory(p.dirname(path)).create(recursive: true);
+    final path = p.join(recordingsDir.path, '$id.wav');
 
     await _recorder.start(
       RecordConfig(
@@ -438,8 +542,10 @@ class MeetingProvider with ChangeNotifier {
         androidConfig: const AndroidRecordConfig(
           audioSource: AndroidAudioSource.mic,
         ),
-        device: _settings?.audioSourceId != null && _settings!.audioSourceId.isNotEmpty
-            ? InputDevice(id: _settings!.audioSourceId, label: '') 
+        device:
+            _settings?.audioSourceId != null &&
+                _settings!.audioSourceId.isNotEmpty
+            ? InputDevice(id: _settings!.audioSourceId, label: '')
             : null,
       ),
       path: path,
@@ -477,7 +583,6 @@ class MeetingProvider with ChangeNotifier {
       debugPrint('SpeechToText init error: $e');
     }
   }
-
 
   void _startTimer() {
     _timer?.cancel();
@@ -529,10 +634,12 @@ class MeetingProvider with ChangeNotifier {
   // ── Playback ─────────────────────────────────────────────
   Future<void> playMeeting(Meeting meeting) async {
     if (meeting.audioFilePath == null) return;
-    
+
     final file = File(meeting.audioFilePath!);
     if (!await file.exists()) {
-      _notificationController.add('Audio file not found at ${meeting.audioFilePath}');
+      _notificationController.add(
+        'Audio file not found at ${meeting.audioFilePath}',
+      );
       return;
     }
 
@@ -546,6 +653,10 @@ class MeetingProvider with ChangeNotifier {
       } else {
         await _audioPlayer.stop();
         _currentlyPlayingId = meeting.id;
+        // The new track starts at zero; without this the transcript would keep
+        // highlighting wherever the previous one left off until the first tick.
+        position.value = Duration.zero;
+        _totalDuration = Duration.zero;
         await _audioPlayer.setPlaybackRate(_playbackSpeed);
         await _audioPlayer.play(DeviceFileSource(meeting.audioFilePath!));
       }
@@ -554,6 +665,7 @@ class MeetingProvider with ChangeNotifier {
       _notificationController.add('Failed to play audio: ${e.toString()}');
       _isPlaying = false;
       _currentlyPlayingId = null;
+      position.value = Duration.zero;
     }
     notifyListeners();
   }
@@ -570,14 +682,21 @@ class MeetingProvider with ChangeNotifier {
     await _audioPlayer.stop();
     _isPlaying = false;
     _currentlyPlayingId = null;
+    position.value = Duration.zero;
     notifyListeners();
   }
 
   // ── Create & Transcribe ──────────────────────────────────
-  Future<Meeting> createMeetingFromRecording(String audioPath, {String? title, Duration? duration}) async {
+  Future<Meeting> createMeetingFromRecording(
+    String audioPath, {
+    String? title,
+    Duration? duration,
+  }) async {
     final now = DateTime.now();
     final id = now.millisecondsSinceEpoch.toString();
-    final actualDuration = (duration != null && duration != Duration.zero) ? duration : _recordingDuration;
+    final actualDuration = (duration != null && duration != Duration.zero)
+        ? duration
+        : _recordingDuration;
     final durationStr = _formatDuration(actualDuration);
 
     final meeting = Meeting(
@@ -586,12 +705,11 @@ class MeetingProvider with ChangeNotifier {
       team: 'Personal',
       date: _formatDate(now),
       duration: durationStr,
-      status: (_settings?.isAutoTranscribeEnabled ?? true) 
-          ? MeetingStatus.processing 
+      status: (_settings?.isAutoTranscribeEnabled ?? true)
+          ? MeetingStatus.processing
           : MeetingStatus.inProgress, // Ready to process
       audioFilePath: audioPath,
       recordedAt: now,
-      isLocalOnly: _settings?.isLocalOnlyMode ?? false,
     );
 
     _meetings.insert(0, meeting);
@@ -621,6 +739,11 @@ class MeetingProvider with ChangeNotifier {
         throw Exception('Groq API Key is missing. Please set it in Settings.');
       }
 
+      // Spend a unit of the device's free allowance before doing any paid work.
+      // Throws QuotaExceededException, which the catch below reports without
+      // marking the recording as a failed transcription.
+      await _quota.consume();
+
       debugPrint('Starting transcription for meeting: ${meeting.id}');
       final result = await _transcription.transcribe(
         meeting.audioFilePath!,
@@ -629,14 +752,18 @@ class MeetingProvider with ChangeNotifier {
         apiKey: _settings?.groqApiKey,
         useCloudMode: _settings?.isCloudMode ?? true,
       );
-      debugPrint('Transcription result received. Text length: ${result.fullText.length}');
+      debugPrint(
+        'Transcription result received. Text length: ${result.fullText.length}',
+      );
 
       // Extract unique speakers from diarized segments and seed the mapping.
-      final uniqueSpeakerIds = result.segments
-          .map((s) => s.speaker)
-          .whereType<String>()
-          .toSet()
-          .toList()..sort();
+      final uniqueSpeakerIds =
+          result.segments
+              .map((s) => s.speaker)
+              .whereType<String>()
+              .toSet()
+              .toList()
+            ..sort();
       final seedMapping = <String, String>{
         for (final id in uniqueSpeakerIds) id: id,
       };
@@ -646,8 +773,12 @@ class MeetingProvider with ChangeNotifier {
         transcript: result.fullText,
         segments: result.segments.isEmpty ? null : result.segments,
         status: MeetingStatus.inProgress,
-        speakers: uniqueSpeakerIds.isNotEmpty ? uniqueSpeakerIds : meeting.speakers,
-        speakerMapping: uniqueSpeakerIds.isNotEmpty ? seedMapping : meeting.speakerMapping,
+        speakers: uniqueSpeakerIds.isNotEmpty
+            ? uniqueSpeakerIds
+            : meeting.speakers,
+        speakerMapping: uniqueSpeakerIds.isNotEmpty
+            ? seedMapping
+            : meeting.speakerMapping,
         detectedLanguage: result.language,
       );
       _updateMeeting(updated);
@@ -675,18 +806,23 @@ class MeetingProvider with ChangeNotifier {
         );
         _updateMeeting(updated);
 
-        if (_settings?.isProcessingCompleteNotifyEnabled ?? true) {
-          _notificationController.add('Meeting "${updated.title}" is ready!');
-        }
+        _notificationController.add('Meeting "${updated.title}" is ready!');
       } else {
         _updateMeeting(updated.copyWith(status: MeetingStatus.transcribed));
       }
+    } on QuotaException catch (e) {
+      // No unit was spent and no work was done -- the recording is intact and
+      // can be transcribed later, so don't stamp an error into its transcript.
+      debugPrint('Device quota check blocked transcription: $e');
+      _notificationController.add(e.toString());
     } catch (e) {
       debugPrint('Transcription pipeline error: $e');
-      _updateMeeting(meeting.copyWith(
-        transcript: 'Transcription failed: $e',
-        status: MeetingStatus.transcribed,
-      ));
+      _updateMeeting(
+        meeting.copyWith(
+          transcript: 'Transcription failed: $e',
+          status: MeetingStatus.transcribed,
+        ),
+      );
     } finally {
       _currentProcessingId = null;
       _processingState = ProcessingState.idle;
@@ -696,7 +832,10 @@ class MeetingProvider with ChangeNotifier {
 
   /// Re-generate summary for a meeting that already has a transcript.
   Future<void> generateSummaryForMeeting(String id) async {
-    final meeting = _meetings.firstWhere((m) => m.id == id, orElse: () => throw Exception('Not found'));
+    final meeting = _meetings.firstWhere(
+      (m) => m.id == id,
+      orElse: () => throw Exception('Not found'),
+    );
     if (meeting.transcript == null || meeting.transcript!.isEmpty) return;
 
     _currentProcessingId = id;
@@ -713,13 +852,15 @@ class MeetingProvider with ChangeNotifier {
         useCloudMode: _settings?.isCloudMode ?? true,
         transcriptLanguage: meeting.detectedLanguage,
       );
-      _updateMeeting(meeting.copyWith(
-        summary: result.summary,
-        actionItems: result.actionItems,
-        highlights: result.highlights,
-        topics: result.topics,
-        sentiment: result.sentiment,
-      ));
+      _updateMeeting(
+        meeting.copyWith(
+          summary: result.summary,
+          actionItems: result.actionItems,
+          highlights: result.highlights,
+          topics: result.topics,
+          sentiment: result.sentiment,
+        ),
+      );
     } finally {
       _currentProcessingId = null;
       _processingState = ProcessingState.idle;
@@ -782,7 +923,9 @@ class MeetingProvider with ChangeNotifier {
   void toggleFavorite(String id) {
     final idx = _meetings.indexWhere((m) => m.id == id);
     if (idx == -1) return;
-    _meetings[idx] = _meetings[idx].copyWith(isFavorite: !_meetings[idx].isFavorite);
+    _meetings[idx] = _meetings[idx].copyWith(
+      isFavorite: !_meetings[idx].isFavorite,
+    );
     _storage.saveMeetings(_meetings);
     notifyListeners();
   }
@@ -807,7 +950,20 @@ class MeetingProvider with ChangeNotifier {
   }
 
   String _formatDate(DateTime dt) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return '${months[dt.month - 1]} ${dt.day}';
   }
 
@@ -815,9 +971,17 @@ class MeetingProvider with ChangeNotifier {
     return '${dt.day}/${dt.month}/${dt.year} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
   }
 
-  Future<void> seek(Duration position) async {
-    await _audioPlayer.seek(position);
-    notifyListeners();
+  Future<void> seek(Duration to) async {
+    final clamped = to < Duration.zero
+        ? Duration.zero
+        : (_totalDuration > Duration.zero && to > _totalDuration
+              ? _totalDuration
+              : to);
+    // Move the playhead now rather than waiting for the player's next tick, so
+    // tapping a transcript line highlights it immediately -- and so seeking
+    // while paused still moves the highlight.
+    position.value = clamped;
+    await _audioPlayer.seek(clamped);
   }
 
   @override
@@ -827,6 +991,7 @@ class MeetingProvider with ChangeNotifier {
     _audioPlayer.dispose();
     _transcription.stopServer();
     _notificationController.close();
+    position.dispose();
     super.dispose();
   }
 }

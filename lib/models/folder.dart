@@ -21,9 +21,9 @@ class Folder {
   }
 
   Map<String, dynamic> toJson() => {
-        'id': id,
-        'name': name,
-        'colorValue': colorValue,
-        'icon': icon,
-      };
+    'id': id,
+    'name': name,
+    'colorValue': colorValue,
+    'icon': icon,
+  };
 }

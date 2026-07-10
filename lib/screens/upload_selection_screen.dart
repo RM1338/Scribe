@@ -88,7 +88,7 @@ class _UploadSelectionScreenState extends State<UploadSelectionScreen> {
     if (diff.inDays == 1) return 'Yesterday';
     return '${diff.inDays} days ago';
   }
-  
+
   IconData _getIconForExtension(String ext) {
     switch (ext.toLowerCase()) {
       case '.mp4':
@@ -123,21 +123,20 @@ class _UploadSelectionScreenState extends State<UploadSelectionScreen> {
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
           child: CircleAvatar(
-            backgroundColor: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+            backgroundColor: isDark
+                ? Colors.white10
+                : Colors.black.withValues(alpha: 0.05),
             child: IconButton(
-              icon: Icon(Icons.arrow_back_rounded, color: textPrimary, size: 20),
+              icon: Icon(
+                Icons.arrow_back_rounded,
+                color: textPrimary,
+                size: 20,
+              ),
               onPressed: () => Navigator.pop(context),
             ),
           ),
         ),
-        title: Text(
-          'Upload Recording',
-          style: GoogleFonts.manrope(
-            color: textPrimary,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
+        title: Text('Upload Recording', style: context.appBarTitle),
         centerTitle: true,
       ),
       body: Padding(
@@ -146,7 +145,7 @@ class _UploadSelectionScreenState extends State<UploadSelectionScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const SizedBox(height: 24),
-            
+
             // 1. Dashed Drop Zone Card
             GestureDetector(
               onTap: _pickFile,
@@ -158,7 +157,9 @@ class _UploadSelectionScreenState extends State<UploadSelectionScreen> {
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+                      color: Colors.black.withValues(
+                        alpha: isDark ? 0.3 : 0.05,
+                      ),
                       blurRadius: 20,
                       offset: const Offset(0, 10),
                     ),
@@ -186,7 +187,11 @@ class _UploadSelectionScreenState extends State<UploadSelectionScreen> {
                               color: scribeTeal.withValues(alpha: 0.1),
                               shape: BoxShape.circle,
                             ),
-                            child: Icon(Icons.cloud_upload_rounded, color: scribeTeal, size: 48),
+                            child: Icon(
+                              Icons.cloud_upload_rounded,
+                              color: scribeTeal,
+                              size: 48,
+                            ),
                           ),
                           const SizedBox(height: 24),
                           Text(
@@ -202,7 +207,10 @@ class _UploadSelectionScreenState extends State<UploadSelectionScreen> {
                           const SizedBox(height: 12),
                           Text(
                             'Supported: MP3, WAV, M4A, MP4, MOV',
-                            style: GoogleFonts.manrope(color: textSecondary, fontSize: 13),
+                            style: GoogleFonts.manrope(
+                              color: textSecondary,
+                              fontSize: 13,
+                            ),
                           ),
                         ],
                       ),
@@ -211,17 +219,14 @@ class _UploadSelectionScreenState extends State<UploadSelectionScreen> {
                 ),
               ),
             ),
-            
+
             const SizedBox(height: 40),
-            
+
             // 2. Recent Files Section Header
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Recent Files',
-                  style: GoogleFonts.manrope(color: textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                Text('Recent Files', style: context.sectionTitle),
                 if (_recentFiles.isNotEmpty)
                   TextButton(
                     onPressed: () {
@@ -232,17 +237,23 @@ class _UploadSelectionScreenState extends State<UploadSelectionScreen> {
                       minimumSize: const Size(50, 30),
                       alignment: Alignment.centerRight,
                     ),
-                    child: Text('See all', style: GoogleFonts.manrope(color: scribeTeal, fontWeight: FontWeight.bold)),
+                    child: Text(
+                      'See all',
+                      style: GoogleFonts.manrope(
+                        color: scribeTeal,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                   ),
               ],
             ),
             const SizedBox(height: 8),
-            
+
             // 3. Recent Files List
             Expanded(
-              child: _isLoading 
-                ? const Center(child: CircularProgressIndicator())
-                : _recentFiles.isEmpty
+              child: _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _recentFiles.isEmpty
                   ? Center(
                       child: Text(
                         'No recent files found.',
@@ -267,7 +278,7 @@ class _UploadSelectionScreenState extends State<UploadSelectionScreen> {
                           () {
                             // Optionally handle tapping on a recent file.
                             // e.g., proceed to process it again or open it
-                          }
+                          },
                         );
                       },
                     ),
@@ -317,12 +328,22 @@ class _UploadSelectionScreenState extends State<UploadSelectionScreen> {
         ),
         title: Text(
           name,
-          style: GoogleFonts.manrope(color: primary, fontWeight: FontWeight.w600, fontSize: 15),
+          style: AppText.cardTitle.copyWith(color: primary),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
         ),
-        subtitle: Text(info, style: GoogleFonts.manrope(color: secondary, fontSize: 13, fontWeight: FontWeight.w500)),
-        trailing: Icon(Icons.chevron_right_rounded, color: secondary.withValues(alpha: 0.5)),
+        subtitle: Text(
+          info,
+          style: GoogleFonts.manrope(
+            color: secondary,
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        trailing: Icon(
+          Icons.chevron_right_rounded,
+          color: secondary.withValues(alpha: 0.5),
+        ),
         onTap: onTap,
       ),
     );
@@ -348,9 +369,15 @@ class _DashedBorderPainter extends CustomPainter {
       ..strokeWidth = strokeWidth
       ..style = PaintingStyle.stroke;
 
-    final RRect rRect = RRect.fromLTRBR(0, 0, size.width, size.height, const Radius.circular(24));
+    final RRect rRect = RRect.fromLTRBR(
+      0,
+      0,
+      size.width,
+      size.height,
+      const Radius.circular(24),
+    );
     final Path path = Path()..addRRect(rRect);
-    
+
     final Path dashPath = Path();
     double distance = 0.0;
     for (var i in path.computeMetrics()) {
@@ -358,7 +385,8 @@ class _DashedBorderPainter extends CustomPainter {
         dashPath.addPath(i.extractPath(distance, distance + gap), Offset.zero);
         distance += gap * 2;
       }
-      distance = 0.0; // Reset for the next metric (though usually there is only one for RRect)
+      distance =
+          0.0; // Reset for the next metric (though usually there is only one for RRect)
     }
 
     canvas.drawPath(dashPath, paint);

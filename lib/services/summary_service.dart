@@ -20,7 +20,8 @@ class MeetingSummary {
 
 class SummaryService {
   static const String _ollamaUrl = 'http://localhost:11434/api/generate';
-  static const String _groqUrl = 'https://api.groq.com/openai/v1/chat/completions';
+  static const String _groqUrl =
+      'https://api.groq.com/openai/v1/chat/completions';
   static const String _defaultModel = 'llama3.2';
   static const String _groqModel = 'llama-3.3-70b-versatile';
 
@@ -114,10 +115,11 @@ class SummaryService {
         : '';
     final String themeInstruction = detectThemes
         ? '4. A list of main topics discussed.\n'
-          '5. The overall sentiment of the meeting (e.g. Positive, Neutral, Critical).\n'
+              '5. The overall sentiment of the meeting (e.g. Positive, Neutral, Critical).\n'
         : '';
 
-    final prompt = '''${languageInstruction}You are a professional meeting assistant. Analyze the following meeting transcript and provide:
+    final prompt =
+        '''${languageInstruction}You are a professional meeting assistant. Analyze the following meeting transcript and provide:
 
 1. Summary: $styleInstruction
 2. Action items: $sensitivityInstruction
@@ -134,35 +136,47 @@ TRANSCRIPT:
 $transcript''';
 
     try {
-      final response = await http.post(
-        Uri.parse(isCloud ? _groqUrl : _ollamaUrl),
-        headers: {
-          'Content-Type': 'application/json',
-          if (isCloud) 'Authorization': 'Bearer $apiKey',
-        },
-        body: jsonEncode(isCloud
-            ? {
-                'model': _groqModel,
-                'messages': [
-                  {'role': 'system', 'content': 'You are a professional meeting assistant that responds ONLY in valid JSON.'},
-                  {'role': 'user', 'content': prompt}
-                ],
-                'response_format': {'type': 'json_object'},
-              }
-            : {
-                'model': model,
-                'prompt': prompt,
-                'stream': false,
-                'format': 'json',
-              }),
-      ).timeout(const Duration(minutes: 3));
+      final response = await http
+          .post(
+            Uri.parse(isCloud ? _groqUrl : _ollamaUrl),
+            headers: {
+              'Content-Type': 'application/json',
+              if (isCloud) 'Authorization': 'Bearer $apiKey',
+            },
+            body: jsonEncode(
+              isCloud
+                  ? {
+                      'model': _groqModel,
+                      'messages': [
+                        {
+                          'role': 'system',
+                          'content':
+                              'You are a professional meeting assistant that responds ONLY in valid JSON.',
+                        },
+                        {'role': 'user', 'content': prompt},
+                      ],
+                      'response_format': {'type': 'json_object'},
+                    }
+                  : {
+                      'model': model,
+                      'prompt': prompt,
+                      'stream': false,
+                      'format': 'json',
+                    },
+            ),
+          )
+          .timeout(const Duration(minutes: 3));
 
       if (response.statusCode != 200) {
         throw Exception('API error: ${response.statusCode} - ${response.body}');
       }
 
-      final responseData = jsonDecode(response.body) as Map<String, dynamic>;
-      final responseText = isCloud 
+      // Decode as UTF-8 explicitly: `response.body` falls back to latin-1 when
+      // the server sends no charset, which mangles every non-ASCII script the
+      // language instruction above may have asked for.
+      final responseData =
+          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+      final responseText = isCloud
           ? (responseData['choices'][0]['message']['content'] as String)
           : (responseData['response'] as String);
 

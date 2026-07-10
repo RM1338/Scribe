@@ -14,7 +14,7 @@ class HighlightsScreen extends StatelessWidget {
       body: Consumer<MeetingProvider>(
         builder: (context, provider, _) {
           final allMeetings = provider.allMeetings;
-          
+
           // Flatten all action items and highlights from all meetings
           final List<Map<String, dynamic>> allItems = [];
           for (final meeting in allMeetings) {
@@ -48,15 +48,7 @@ class HighlightsScreen extends StatelessWidget {
                 surfaceTintColor: Colors.transparent,
                 flexibleSpace: FlexibleSpaceBar(
                   titlePadding: const EdgeInsets.only(left: 20, bottom: 14),
-                  title: Text(
-                    'Highlights',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w700,
-                      color: context.appTextPrimary,
-                      letterSpacing: -0.8,
-                    ),
-                  ),
+                  title: Text('Highlights', style: context.pageTitle),
                 ),
               ),
 
@@ -66,16 +58,25 @@ class HighlightsScreen extends StatelessWidget {
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.auto_awesome_outlined, size: 64, color: context.appTextTertiary),
+                        Icon(
+                          Icons.auto_awesome_outlined,
+                          size: 64,
+                          color: context.appTextTertiary,
+                        ),
                         SizedBox(height: 16),
                         Text(
                           'No highlights yet',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: context.appTextSecondary),
+                          style: context.sectionTitle.copyWith(
+                            color: context.appTextSecondary,
+                          ),
                         ),
                         SizedBox(height: 8),
                         Text(
                           'Record a meeting to generate AI highlights',
-                          style: TextStyle(fontSize: 14, color: context.appTextTertiary),
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: context.appTextTertiary,
+                          ),
                         ),
                       ],
                     ),
@@ -83,21 +84,21 @@ class HighlightsScreen extends StatelessWidget {
                 )
               else
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 12,
+                  ),
                   sliver: SliverList(
-                    delegate: SliverChildBuilderDelegate(
-                      (context, index) {
-                        final item = allItems[index];
-                        return _HighlightCard(
-                          type: item['type'] as String,
-                          text: item['text'] as String,
-                          meeting: item['meeting'] as Meeting,
-                          icon: item['icon'] as IconData,
-                          color: item['color'] as Color,
-                        );
-                      },
-                      childCount: allItems.length,
-                    ),
+                    delegate: SliverChildBuilderDelegate((context, index) {
+                      final item = allItems[index];
+                      return _HighlightCard(
+                        type: item['type'] as String,
+                        text: item['text'] as String,
+                        meeting: item['meeting'] as Meeting,
+                        icon: item['icon'] as IconData,
+                        color: item['color'] as Color,
+                      );
+                    }, childCount: allItems.length),
                   ),
                 ),
 
@@ -183,7 +184,11 @@ class _HighlightCard extends StatelessWidget {
                 backgroundColor: context.appPrimary.withValues(alpha: 0.1),
                 child: Text(
                   meeting.title.substring(0, 1).toUpperCase(),
-                  style: TextStyle(fontSize: 10, color: context.appPrimary, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    fontSize: 10,
+                    color: context.appPrimary,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
               SizedBox(width: 8),

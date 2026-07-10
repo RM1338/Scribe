@@ -24,18 +24,14 @@ class _ScribeNewNoteScreenState extends State<ScribeNewNoteScreen> {
         backgroundColor: context.appBackground,
         elevation: 0,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new, color: context.appTextPrimary, size: 20),
+          icon: Icon(
+            Icons.arrow_back_ios_new,
+            color: context.appTextPrimary,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          'New Manual Note',
-          style: GoogleFonts.manrope(
-            color: context.appTextPrimary, 
-            fontWeight: FontWeight.bold, 
-            fontSize: 18,
-            letterSpacing: -0.5,
-          ),
-        ),
+        title: Text('New Manual Note', style: context.appBarTitle),
         centerTitle: true,
         actions: [
           TextButton(
@@ -44,11 +40,7 @@ class _ScribeNewNoteScreenState extends State<ScribeNewNoteScreen> {
             },
             child: Text(
               'Save',
-              style: GoogleFonts.manrope(
-                color: context.appPrimary, 
-                fontWeight: FontWeight.bold, 
-                fontSize: 16
-              ),
+              style: context.buttonLabel.copyWith(color: context.appPrimary),
             ),
           ),
           const SizedBox(width: 8),
@@ -73,8 +65,8 @@ class _ScribeNewNoteScreenState extends State<ScribeNewNoteScreen> {
                   TextField(
                     controller: _titleController,
                     style: GoogleFonts.manrope(
-                      color: context.appTextPrimary, 
-                      fontSize: 24, 
+                      color: context.appTextPrimary,
+                      fontSize: 24,
                       fontWeight: FontWeight.bold,
                       letterSpacing: -0.5,
                     ),
@@ -92,14 +84,16 @@ class _ScribeNewNoteScreenState extends State<ScribeNewNoteScreen> {
                       controller: _contentController,
                       maxLines: null,
                       style: GoogleFonts.manrope(
-                        color: context.appTextPrimary, 
-                        fontSize: 16, 
-                        height: 1.5
+                        color: context.appTextPrimary,
+                        fontSize: 16,
+                        height: 1.5,
                       ),
                       decoration: InputDecoration(
                         hintText: 'Write your note...',
                         hintStyle: GoogleFonts.manrope(
-                          color: context.appTextSecondary.withValues(alpha: 0.5),
+                          color: context.appTextSecondary.withValues(
+                            alpha: 0.5,
+                          ),
                         ),
                         border: InputBorder.none,
                       ),
@@ -109,48 +103,52 @@ class _ScribeNewNoteScreenState extends State<ScribeNewNoteScreen> {
               ),
             ),
             const SizedBox(height: 32),
-            
+
             // 2. Project Folder Selector
             _buildLabel('PROJECT FOLDER', context.appTextSecondary),
             _buildSelectorContainer(
-              context.appSurface, 
-              context.appSeparator, 
+              context.appSurface,
+              context.appSeparator,
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    _selectedFolder, 
-                    style: GoogleFonts.manrope(color: context.appTextSecondary)
+                    _selectedFolder,
+                    style: GoogleFonts.manrope(color: context.appTextSecondary),
                   ),
                   Icon(Icons.keyboard_arrow_down, color: context.appPrimary),
                 ],
               ),
             ),
             const SizedBox(height: 24),
-            
+
             // 3. Date Selector
             _buildLabel('DATE', context.appTextSecondary),
             _buildSelectorContainer(
-              context.appSurface, 
-              context.appSeparator, 
+              context.appSurface,
+              context.appSeparator,
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    _selectedDate, 
+                    _selectedDate,
                     style: GoogleFonts.manrope(
-                      color: context.appTextPrimary, 
-                      fontWeight: FontWeight.w500
-                    )
+                      color: context.appTextPrimary,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                  Icon(Icons.calendar_today_outlined, color: context.appPrimary, size: 20),
+                  Icon(
+                    Icons.calendar_today_outlined,
+                    color: context.appPrimary,
+                    size: 20,
+                  ),
                 ],
               ),
             ),
             const SizedBox(height: 32),
-            
+
             // 4. Attachment Drop Zone
-            // Trying to use a dashed border simulation or just solid as in the user snippet, 
+            // Trying to use a dashed border simulation or just solid as in the user snippet,
             // the provided image and user snippet specify: border.all(solid) but the image shows dashed.
             // Flutter doesn't have a native dashed border unless we use a package like dotted_border.
             // The provided snippet defaults to solid, so we'll stick to that.
@@ -160,27 +158,27 @@ class _ScribeNewNoteScreenState extends State<ScribeNewNoteScreen> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: context.appSeparator, 
-                  width: 1.5, 
-                  style: BorderStyle.solid
+                  color: context.appSeparator,
+                  width: 1.5,
+                  style: BorderStyle.solid,
                 ),
               ),
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                   Icon(
-                     Icons.add_photo_alternate_outlined, 
-                     color: context.appTextSecondary.withValues(alpha: 0.5), 
-                     size: 32
-                   ),
-                   const SizedBox(height: 12),
-                   Text(
-                     'Add an image or attachment',
-                     style: GoogleFonts.manrope(
-                       color: context.appTextSecondary, 
-                       fontSize: 13
-                     ),
-                   ),
+                  Icon(
+                    Icons.add_photo_alternate_outlined,
+                    color: context.appTextSecondary.withValues(alpha: 0.5),
+                    size: 32,
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Add an image or attachment',
+                    style: GoogleFonts.manrope(
+                      color: context.appTextSecondary,
+                      fontSize: 13,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -194,14 +192,9 @@ class _ScribeNewNoteScreenState extends State<ScribeNewNoteScreen> {
   Widget _buildLabel(String text, Color color) {
     return Padding(
       padding: const EdgeInsets.only(left: 4, bottom: 8),
-      child: Text(
-        text,
-        style: GoogleFonts.manrope(
-          color: color, 
-          fontSize: 11, 
-          fontWeight: FontWeight.bold, 
-          letterSpacing: 1.2
-        ),
+      child: Builder(
+        builder: (context) =>
+            Text(text, style: context.sectionLabel.copyWith(color: color)),
       ),
     );
   }

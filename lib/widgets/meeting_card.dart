@@ -41,26 +41,12 @@ class MeetingCard extends StatelessWidget {
                 color: context.appPrimaryLight,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(Icons.graphic_eq_rounded, color: context.appPrimary, size: 20),
-            ),
-            if (meeting.isLocalOnly) ...[
-              SizedBox(height: 8),
-              Row(
-                children: [
-                   Icon(Icons.lock_outline_rounded, size: 10, color: context.appTextTertiary),
-                   SizedBox(width: 4),
-                   Text(
-                     'LOCAL ONLY',
-                     style: TextStyle(
-                       fontSize: 9,
-                       fontWeight: FontWeight.w700,
-                       color: context.appTextTertiary,
-                       letterSpacing: 0.2,
-                     ),
-                   ),
-                ],
+              child: Icon(
+                Icons.graphic_eq_rounded,
+                color: context.appPrimary,
+                size: 20,
               ),
-            ],
+            ),
             SizedBox(height: 14),
             Text(
               meeting.title,

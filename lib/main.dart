@@ -26,10 +26,27 @@ void main() async {
     MultiProvider(
       providers: [
         ChangeNotifierProvider(create: (_) => AuthProvider(AuthService())),
-        ChangeNotifierProvider(create: (_) => SettingsProvider(prefs)),
-        ChangeNotifierProxyProvider<SettingsProvider, MeetingProvider>(
+        // Both providers below are rebound whenever the signed-in user changes.
+        // `setUser` is idempotent, so the rebuilds these run on are harmless;
+        // it only does work when the user id actually differs.
+        ChangeNotifierProxyProvider<AuthProvider, SettingsProvider>(
+          create: (_) => SettingsProvider(prefs),
+          update: (_, auth, settings) => settings!
+            ..setUser(
+              auth.currentUser?.id,
+              fullName: auth.signupFullName,
+              email: auth.signupEmail,
+            ),
+        ),
+        ChangeNotifierProxyProvider2<
+          AuthProvider,
+          SettingsProvider,
+          MeetingProvider
+        >(
           create: (_) => MeetingProvider(),
-          update: (_, settings, meeting) => meeting!..attachSettings(settings)..init(),
+          update: (_, auth, settings, meeting) => meeting!
+            ..attachSettings(settings)
+            ..setUser(auth.currentUser?.id),
         ),
       ],
       child: const ScribeApp(),
@@ -42,7 +59,8 @@ class ScribeApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDesktop = Platform.isLinux || Platform.isMacOS || Platform.isWindows;
+    final isDesktop =
+        Platform.isLinux || Platform.isMacOS || Platform.isWindows;
 
     final settings = context.watch<SettingsProvider>();
     final themeMode = _getThemeMode(settings.themeMode);
@@ -61,10 +79,16 @@ class ScribeApp extends StatelessWidget {
                 color: const Color(0xFF0D0D0D),
                 child: Center(
                   child: Container(
-                    margin: const EdgeInsets.symmetric(vertical: 32, horizontal: 20),
+                    margin: const EdgeInsets.symmetric(
+                      vertical: 32,
+                      horizontal: 20,
+                    ),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(48),
-                      border: Border.all(color: const Color(0xFF2A2A2A), width: 10),
+                      border: Border.all(
+                        color: const Color(0xFF2A2A2A),
+                        width: 10,
+                      ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.5),

@@ -4,11 +4,13 @@ import '../theme/app_theme.dart';
 import '../screens/upload_selection_screen.dart';
 import '../screens/new_note_screen.dart';
 import 'create_folder_dialog.dart';
+
 void showScribeCreateMenu(BuildContext context) {
   final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
   // Scribe Design System Colors
-  final Color bgColor = context.appSurface; // Typically bottom sheets use the surface color matching the modal intent
+  final Color bgColor = context
+      .appSurface; // Typically bottom sheets use the surface color matching the modal intent
   final Color textPrimary = context.appTextPrimary;
   final Color textSecondary = context.appTextSecondary;
   final Color scribeTeal = context.appPrimary;
@@ -39,17 +41,9 @@ void showScribeCreateMenu(BuildContext context) {
               ),
             ),
             const SizedBox(height: 32),
-            
+
             // 2. Menu Title
-            Text(
-              'Create New',
-              style: GoogleFonts.manrope(
-                color: textPrimary,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                letterSpacing: -0.5,
-              ),
-            ),
+            Text('Create New', style: context.sheetTitle),
             const SizedBox(height: 24),
 
             // 3. Action Items
@@ -64,7 +58,9 @@ void showScribeCreateMenu(BuildContext context) {
                 Navigator.pop(context); // Close the bottom sheet
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const UploadSelectionScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const UploadSelectionScreen(),
+                  ),
                 );
               },
             ),
@@ -91,11 +87,13 @@ void showScribeCreateMenu(BuildContext context) {
                 Navigator.pop(context); // Close the bottom sheet
                 Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const ScribeNewNoteScreen()),
+                  MaterialPageRoute(
+                    builder: (_) => const ScribeNewNoteScreen(),
+                  ),
                 );
               },
             ),
-            
+
             // Safety padding for devices with home indicators
             SizedBox(height: MediaQuery.of(context).padding.bottom + 16),
           ],
@@ -135,20 +133,25 @@ Widget _buildMenuAction({
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  title,
-                  style: GoogleFonts.manrope(color: primary, fontWeight: FontWeight.w600, fontSize: 16),
-                ),
+                Text(title, style: AppText.cardTitle.copyWith(color: primary)),
                 const SizedBox(height: 2),
                 Text(
                   subtitle,
-                  style: GoogleFonts.manrope(color: secondary, fontSize: 13, fontWeight: FontWeight.w400),
+                  style: GoogleFonts.manrope(
+                    color: secondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                  ),
                 ),
               ],
             ),
           ),
           const SizedBox(width: 16),
-          Icon(Icons.chevron_right_rounded, color: secondary.withValues(alpha: 0.5), size: 24),
+          Icon(
+            Icons.chevron_right_rounded,
+            color: secondary.withValues(alpha: 0.5),
+            size: 24,
+          ),
         ],
       ),
     ),

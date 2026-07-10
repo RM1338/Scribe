@@ -46,19 +46,19 @@ class _AppShellState extends State<AppShell> {
       curve: Curves.easeInOut,
       color: context.appBackground,
       child: Scaffold(
-        backgroundColor: Colors.transparent, // Let AnimatedContainer handle background
-        body: IndexedStack(
-          index: _currentIndex,
-          children: _screens,
-        ),
-        floatingActionButton: _currentIndex == 0 
-          ? FloatingActionButton(
-              onPressed: () => setState(() => _currentIndex = 1),
-              backgroundColor: context.appPrimary,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-              child: const Icon(Icons.mic, color: Colors.white, size: 28),
-            )
-          : null,
+        backgroundColor:
+            Colors.transparent, // Let AnimatedContainer handle background
+        body: IndexedStack(index: _currentIndex, children: _screens),
+        floatingActionButton: _currentIndex == 0
+            ? FloatingActionButton(
+                onPressed: () => setState(() => _currentIndex = 1),
+                backgroundColor: context.appPrimary,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: const Icon(Icons.mic, color: Colors.white, size: 28),
+              )
+            : null,
         bottomNavigationBar: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -72,9 +72,7 @@ class _AppShellState extends State<AppShell> {
                   onTap: () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (_) => PlayerScreen(
-                          meeting: activeMeeting,
-                        ),
+                        builder: (_) => PlayerScreen(meeting: activeMeeting),
                       ),
                     );
                   },
@@ -89,10 +87,7 @@ class _AppShellState extends State<AppShell> {
               decoration: BoxDecoration(
                 color: context.appSurface,
                 border: Border(
-                  top: BorderSide(
-                    color: context.appSeparator,
-                    width: 0.5,
-                  ),
+                  top: BorderSide(color: context.appSeparator, width: 0.5),
                 ),
               ),
               child: SafeArea(
@@ -120,7 +115,8 @@ class _AppShellState extends State<AppShell> {
                         icon: Icons.settings_outlined,
                         activeIcon: Icons.settings_rounded,
                         label: 'Settings',
-                        isActive: _currentIndex == 4, // Keep index 4 for settings
+                        isActive:
+                            _currentIndex == 4, // Keep index 4 for settings
                         onTap: () => setState(() => _currentIndex = 4),
                       ),
                     ],

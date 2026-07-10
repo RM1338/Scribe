@@ -27,7 +27,7 @@ class _SearchScreenState extends State<SearchScreen> {
   void _onCategoryTap(String category) {
     setState(() {
       _selectedCategory = category;
-      _query = ''; 
+      _query = '';
       _controller.clear();
     });
   }
@@ -41,7 +41,7 @@ class _SearchScreenState extends State<SearchScreen> {
   String? _getSnippet(Meeting meeting, String query) {
     if (query.isEmpty) return null;
     final q = query.toLowerCase();
-    
+
     // Check title (usually visible already, but for completeness)
     if (meeting.title.toLowerCase().contains(q)) return null;
 
@@ -51,7 +51,8 @@ class _SearchScreenState extends State<SearchScreen> {
     }
 
     // Check transcript
-    if (meeting.transcript != null && meeting.transcript!.toLowerCase().contains(q)) {
+    if (meeting.transcript != null &&
+        meeting.transcript!.toLowerCase().contains(q)) {
       return _extractSnippet(meeting.transcript!, q);
     }
 
@@ -65,11 +66,11 @@ class _SearchScreenState extends State<SearchScreen> {
     const contextSize = 40;
     final start = (idx - contextSize).clamp(0, text.length);
     final end = (idx + query.length + contextSize).clamp(0, text.length);
-    
+
     String snippet = text.substring(start, end).replaceAll('\n', ' ');
     if (start > 0) snippet = '...$snippet';
     if (end < text.length) snippet = '$snippet...';
-    
+
     return snippet;
   }
 
@@ -97,18 +98,22 @@ class _SearchScreenState extends State<SearchScreen> {
       body: Consumer<MeetingProvider>(
         builder: (context, provider, _) {
           final allMeetings = provider.allMeetings;
-          
+
           List<Meeting> results = [];
-          
-          if (_selectedCategory != null || _controller.text.isNotEmpty || _hasActiveFilters(provider)) {
+
+          if (_selectedCategory != null ||
+              _controller.text.isNotEmpty ||
+              _hasActiveFilters(provider)) {
             // Get base results from provider's advanced search
             results = provider.searchMeetings(_controller.text);
-            
+
             // Further filter by category if selected
             if (_selectedCategory != null) {
               results = results.where((m) {
-                if (_selectedCategory == 'Action Items') return m.actionItems.isNotEmpty;
-                if (_selectedCategory == 'Key Decisions') return m.highlights.isNotEmpty;
+                if (_selectedCategory == 'Action Items')
+                  return m.actionItems.isNotEmpty;
+                if (_selectedCategory == 'Key Decisions')
+                  return m.highlights.isNotEmpty;
                 if (_selectedCategory == 'Short Syncs') {
                   final mins = int.tryParse(m.duration.split(' ')[0]) ?? 0;
                   return mins < 5;
@@ -134,50 +139,51 @@ class _SearchScreenState extends State<SearchScreen> {
                 automaticallyImplyLeading: false,
                 flexibleSpace: FlexibleSpaceBar(
                   centerTitle: false,
-                  titlePadding: const EdgeInsets.only(left: 20, bottom: 14, right: 20),
+                  titlePadding: const EdgeInsets.only(
+                    left: 20,
+                    bottom: 14,
+                    right: 20,
+                  ),
                   title: _selectedCategory != null
-                    ? Row(
-                        crossAxisAlignment: CrossAxisAlignment.center,
-                        children: [
-                          GestureDetector(
-                            onTap: () => setState(() => _selectedCategory = null),
-                            child: Padding(
-                              padding: EdgeInsets.only(right: 12),
-                              child: Icon(Icons.arrow_back_ios_new_rounded, size: 20, color: context.appTextPrimary),
-                            ),
-                          ),
-                          Expanded(
-                            child: Text(
-                              _selectedCategory!,
-                              style: TextStyle(
-                                fontSize: 21,
-                                fontWeight: FontWeight.w700,
-                                color: context.appTextPrimary,
-                                letterSpacing: -0.5,
+                      ? Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            GestureDetector(
+                              onTap: () =>
+                                  setState(() => _selectedCategory = null),
+                              child: Padding(
+                                padding: EdgeInsets.only(right: 12),
+                                child: Icon(
+                                  Icons.arrow_back_ios_new_rounded,
+                                  size: 20,
+                                  color: context.appTextPrimary,
+                                ),
                               ),
-                              overflow: TextOverflow.ellipsis,
                             ),
-                          ),
-                          Text(
-                            '${results.length} result${results.length == 1 ? '' : 's'}',
-                            style: TextStyle(
-                              fontSize: 13, 
-                              color: context.appTextTertiary, 
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0,
+                            Expanded(
+                              child: Text(
+                                _selectedCategory!,
+                                style: TextStyle(
+                                  fontSize: 21,
+                                  fontWeight: FontWeight.w700,
+                                  color: context.appTextPrimary,
+                                  letterSpacing: -0.5,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
-                          ),
-                        ],
-                      )
-                    : Text(
-                        'Search',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w700,
-                          color: context.appTextPrimary,
-                          letterSpacing: -0.8,
-                        ),
-                      ),
+                            Text(
+                              '${results.length} result${results.length == 1 ? '' : 's'}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: context.appTextTertiary,
+                                fontWeight: FontWeight.w500,
+                                letterSpacing: 0,
+                              ),
+                            ),
+                          ],
+                        )
+                      : Text('Search', style: context.pageTitle),
                 ),
               ),
 
@@ -185,7 +191,10 @@ class _SearchScreenState extends State<SearchScreen> {
               if (_selectedCategory == null)
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 8,
+                    ),
                     child: Container(
                       decoration: BoxDecoration(
                         color: context.appSurfaceVariant,
@@ -202,13 +211,21 @@ class _SearchScreenState extends State<SearchScreen> {
                         decoration: InputDecoration(
                           hintText: 'Meetings, transcripts, summaries...',
                           hintStyle: TextStyle(color: context.appTextTertiary),
-                          prefixIcon: Icon(Icons.search_rounded, color: context.appTextTertiary, size: 20),
+                          prefixIcon: Icon(
+                            Icons.search_rounded,
+                            color: context.appTextTertiary,
+                            size: 20,
+                          ),
                           suffixIcon: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               if (_query.isNotEmpty)
                                 IconButton(
-                                  icon: Icon(Icons.close_rounded, color: context.appTextTertiary, size: 20),
+                                  icon: Icon(
+                                    Icons.close_rounded,
+                                    color: context.appTextTertiary,
+                                    size: 20,
+                                  ),
                                   onPressed: () {
                                     _controller.clear();
                                     setState(() {
@@ -221,15 +238,21 @@ class _SearchScreenState extends State<SearchScreen> {
                               IconButton(
                                 icon: Icon(
                                   Icons.tune_rounded,
-                                  color: _hasActiveFilters(provider) ? context.appPrimary : context.appTextTertiary,
+                                  color: _hasActiveFilters(provider)
+                                      ? context.appPrimary
+                                      : context.appTextTertiary,
                                   size: 20,
                                 ),
-                                onPressed: () => _showFilterSheet(context, provider),
+                                onPressed: () =>
+                                    _showFilterSheet(context, provider),
                               ),
                             ],
                           ),
                           border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
                         ),
                       ),
                     ),
@@ -241,7 +264,10 @@ class _SearchScreenState extends State<SearchScreen> {
                 SliverToBoxAdapter(
                   child: SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 20,
+                      vertical: 4,
+                    ),
                     child: Row(
                       children: [
                         if (provider.filterStartDate != null)
@@ -249,14 +275,18 @@ class _SearchScreenState extends State<SearchScreen> {
                             label: 'Date Range',
                             onDeleted: () => provider.setDateRange(null, null),
                           ),
-                        ...provider.filterSpeakers.map((s) => _FilterChip(
-                          label: 'Speaker: $s',
-                          onDeleted: () => provider.toggleSpeakerFilter(s),
-                        )),
-                        ...provider.filterTags.map((t) => _FilterChip(
-                          label: '#$t',
-                          onDeleted: () => provider.toggleTagFilter(t),
-                        )),
+                        ...provider.filterSpeakers.map(
+                          (s) => _FilterChip(
+                            label: 'Speaker: $s',
+                            onDeleted: () => provider.toggleSpeakerFilter(s),
+                          ),
+                        ),
+                        ...provider.filterTags.map(
+                          (t) => _FilterChip(
+                            label: '#$t',
+                            onDeleted: () => provider.toggleTagFilter(t),
+                          ),
+                        ),
                         if (provider.filterActionItemsOnly)
                           _FilterChip(
                             label: 'Action Items',
@@ -280,12 +310,18 @@ class _SearchScreenState extends State<SearchScreen> {
                       children: [
                         Text(
                           'Results',
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 16,
+                          ),
                         ),
                         Spacer(),
                         Text(
                           '${results.length} result${results.length == 1 ? '' : 's'}',
-                          style: TextStyle(fontSize: 13, color: context.appTextTertiary),
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: context.appTextTertiary,
+                          ),
                         ),
                       ],
                     ),
@@ -298,9 +334,18 @@ class _SearchScreenState extends State<SearchScreen> {
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.search_off_rounded, size: 48, color: context.appTextTertiary.withValues(alpha: 0.5)),
+                          Icon(
+                            Icons.search_off_rounded,
+                            size: 48,
+                            color: context.appTextTertiary.withValues(
+                              alpha: 0.5,
+                            ),
+                          ),
                           SizedBox(height: 16),
-                          Text('No results found', style: TextStyle(color: context.appTextSecondary)),
+                          Text(
+                            'No results found',
+                            style: TextStyle(color: context.appTextSecondary),
+                          ),
                         ],
                       ),
                     ),
@@ -328,17 +373,27 @@ class _SearchScreenState extends State<SearchScreen> {
                               query: _query,
                               snippet: _getSnippet(results[i], _query),
                               onTap: () {
-                                if (_query.isNotEmpty) provider.addRecentSearch(_query);
+                                if (_query.isNotEmpty)
+                                  provider.addRecentSearch(_query);
                                 Navigator.push(
                                   context,
-                                  MaterialPageRoute(builder: (_) => DetailScreen(meeting: results[i])),
+                                  MaterialPageRoute(
+                                    builder: (_) =>
+                                        DetailScreen(meeting: results[i]),
+                                  ),
                                 );
                               },
-                              onFavoriteToggle: () => provider.toggleFavorite(results[i].id),
-                              onDelete: () => provider.deleteMeeting(results[i].id),
+                              onFavoriteToggle: () =>
+                                  provider.toggleFavorite(results[i].id),
+                              onDelete: () =>
+                                  provider.deleteMeeting(results[i].id),
                             ),
                             if (i < results.length - 1)
-                              Divider(height: 0.5, indent: 72, color: context.appSeparator),
+                              Divider(
+                                height: 0.5,
+                                indent: 72,
+                                color: context.appSeparator,
+                              ),
                           ],
                         ],
                       ),
@@ -352,11 +407,24 @@ class _SearchScreenState extends State<SearchScreen> {
                       padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
                       child: Row(
                         children: [
-                          Text('Recent Searches', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: context.appTextSecondary)),
+                          Text(
+                            'Recent Searches',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                              color: context.appTextSecondary,
+                            ),
+                          ),
                           Spacer(),
                           TextButton(
                             onPressed: () => provider.clearRecentSearches(),
-                            child: Text('Clear', style: TextStyle(fontSize: 13, color: context.appPrimary)),
+                            child: Text(
+                              'Clear',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: context.appPrimary,
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -376,8 +444,13 @@ class _SearchScreenState extends State<SearchScreen> {
                             label: Text(s),
                             backgroundColor: context.appSurfaceVariant,
                             side: BorderSide.none,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            labelStyle: TextStyle(fontSize: 13, color: context.appTextSecondary),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            labelStyle: TextStyle(
+                              fontSize: 13,
+                              color: context.appTextSecondary,
+                            ),
                             onPressed: () {
                               setState(() {
                                 _query = s;
@@ -410,11 +483,16 @@ class _SearchScreenState extends State<SearchScreen> {
 
                   SliverToBoxAdapter(
                     child: Container(
-                      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                      margin: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 8,
+                      ),
                       decoration: BoxDecoration(
                         color: context.appSurface,
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: context.appSeparator.withValues(alpha: 0.5)),
+                        border: Border.all(
+                          color: context.appSeparator.withValues(alpha: 0.5),
+                        ),
                       ),
                       child: Column(
                         children: [
@@ -450,39 +528,54 @@ class _SearchScreenState extends State<SearchScreen> {
                     ),
                   ),
 
-                  if (provider.uniqueTeams.isNotEmpty && (provider.uniqueTeams.length > 1 || provider.uniqueTeams.first != 'Personal')) ...[
+                  if (provider.uniqueTeams.isNotEmpty &&
+                      (provider.uniqueTeams.length > 1 ||
+                          provider.uniqueTeams.first != 'Personal')) ...[
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
                         child: Text(
                           'Teams',
-                          style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                            color: context.appTextTertiary,
-                            fontWeight: FontWeight.w600,
-                            letterSpacing: 0.5,
-                          ),
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                color: context.appTextTertiary,
+                                fontWeight: FontWeight.w600,
+                                letterSpacing: 0.5,
+                              ),
                         ),
                       ),
                     ),
                     SliverToBoxAdapter(
                       child: Container(
-                        margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 8,
+                        ),
                         decoration: BoxDecoration(
                           color: context.appSurface,
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(color: context.appSeparator.withValues(alpha: 0.5)),
+                          border: Border.all(
+                            color: context.appSeparator.withValues(alpha: 0.5),
+                          ),
                         ),
                         child: Column(
                           children: [
-                            for (int i = 0; i < provider.uniqueTeams.length; i++) ...[
-                              if (provider.uniqueTeams[i] != 'Personal' || provider.uniqueTeams.length > 1) ...[
+                            for (
+                              int i = 0;
+                              i < provider.uniqueTeams.length;
+                              i++
+                            ) ...[
+                              if (provider.uniqueTeams[i] != 'Personal' ||
+                                  provider.uniqueTeams.length > 1) ...[
                                 _ArchiveListTile(
                                   label: provider.uniqueTeams[i],
                                   icon: Icons.group_rounded,
                                   color: context.appPrimary,
-                                  onTap: () => _onCategoryTap(provider.uniqueTeams[i]),
+                                  onTap: () =>
+                                      _onCategoryTap(provider.uniqueTeams[i]),
                                 ),
-                                if (i < provider.uniqueTeams.length - 1) _ArchiveDivider(),
+                                if (i < provider.uniqueTeams.length - 1)
+                                  _ArchiveDivider(),
                               ],
                             ],
                           ],
@@ -544,7 +637,11 @@ class _ArchiveListTile extends StatelessWidget {
                 ),
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: context.appTextTertiary.withValues(alpha: 0.5), size: 20),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: context.appTextTertiary.withValues(alpha: 0.5),
+              size: 20,
+            ),
           ],
         ),
       ),
@@ -596,7 +693,11 @@ class _SearchListTile extends StatelessWidget {
                 color: context.appSurfaceVariant,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(Icons.mic_none_rounded, color: context.appTextSecondary, size: 20),
+              child: Icon(
+                Icons.mic_none_rounded,
+                color: context.appTextSecondary,
+                size: 20,
+              ),
             ),
             SizedBox(width: 12),
             Expanded(
@@ -631,7 +732,10 @@ class _SearchListTile extends StatelessWidget {
                   ] else ...[
                     Text(
                       '${meeting.date} • ${meeting.duration}',
-                      style: TextStyle(fontSize: 12, color: context.appTextTertiary),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: context.appTextTertiary,
+                      ),
                     ),
                   ],
                 ],
@@ -643,13 +747,17 @@ class _SearchListTile extends StatelessWidget {
     );
   }
 
-  List<TextSpan> _highlightSnippet(BuildContext context, String snippet, String query) {
+  List<TextSpan> _highlightSnippet(
+    BuildContext context,
+    String snippet,
+    String query,
+  ) {
     if (query.isEmpty) return [TextSpan(text: snippet)];
-    
+
     final List<TextSpan> spans = [];
     final lowerSnippet = snippet.toLowerCase();
     final lowerQuery = query.toLowerCase();
-    
+
     int start = 0;
     while (true) {
       final index = lowerSnippet.indexOf(lowerQuery, start);
@@ -657,23 +765,25 @@ class _SearchListTile extends StatelessWidget {
         spans.add(TextSpan(text: snippet.substring(start)));
         break;
       }
-      
+
       if (index > start) {
         spans.add(TextSpan(text: snippet.substring(start, index)));
       }
-      
-      spans.add(TextSpan(
-        text: snippet.substring(index, index + query.length),
-        style: TextStyle(
-          fontWeight: FontWeight.w700,
-          color: context.appTextPrimary,
-          backgroundColor: Color(0xFFFDF2B5), // Subtle yellow highlight
+
+      spans.add(
+        TextSpan(
+          text: snippet.substring(index, index + query.length),
+          style: TextStyle(
+            fontWeight: FontWeight.w700,
+            color: context.appTextPrimary,
+            backgroundColor: Color(0xFFFDF2B5), // Subtle yellow highlight
+          ),
         ),
-      ));
-      
+      );
+
       start = index + query.length;
     }
-    
+
     return spans;
   }
 }
@@ -689,9 +799,15 @@ class _FilterChip extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
       child: Chip(
-        label: Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
+        label: Text(
+          label,
+          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+        ),
         backgroundColor: context.appPrimary.withValues(alpha: 0.1),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8), side: BorderSide.none),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+          side: BorderSide.none,
+        ),
         onDeleted: onDeleted,
         deleteIcon: Icon(Icons.close_rounded, size: 14),
         padding: EdgeInsets.zero,
@@ -722,7 +838,10 @@ class _FilterBottomSheet extends StatelessWidget {
             children: [
               Row(
                 children: [
-                  Text('Filters', style: Theme.of(context).textTheme.titleLarge),
+                  Text(
+                    'Filters',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
                   Spacer(),
                   TextButton(
                     onPressed: () {
@@ -732,120 +851,158 @@ class _FilterBottomSheet extends StatelessWidget {
                   ),
                 ],
               ),
-          SizedBox(height: 16),
-          
-          // Date Range
-          Text('Date Range', style: TextStyle(fontWeight: FontWeight.w600)),
-          SizedBox(height: 8),
-          Row(
-            children: [
-              _DateRangeButton(
-                label: 'Today',
-                selected: provider.filterStartDate != null && _isSameDay(provider.filterStartDate!, DateTime.now().subtract(const Duration(hours: 24))),
-                onTap: () => provider.setDateRange(
-                  DateTime.now().subtract(const Duration(hours: 24)), 
-                  DateTime.now()
-                ),
-              ),
-              SizedBox(width: 8),
-              _DateRangeButton(
-                label: 'This Week',
-                selected: provider.filterStartDate != null && _isSameWeek(provider.filterStartDate!),
-                onTap: () => provider.setDateRange(
-                  DateTime.now().subtract(const Duration(days: 7)), 
-                  DateTime.now()
-                ),
-              ),
-              SizedBox(width: 8),
-              _CalendarButton(
-                selected: provider.filterStartDate != null && !_isSameDay(provider.filterStartDate!, DateTime.now().subtract(const Duration(hours: 24))) && !_isSameWeek(provider.filterStartDate!),
-                onTap: () async {
-                  final range = await showModalBottomSheet<DateTimeRange>(
-                    context: context,
-                    isScrollControlled: true,
-                    backgroundColor: Colors.transparent,
-                    builder: (context) => _GranolaDateRangePicker(
-                      initialRange: provider.filterStartDate != null && provider.filterEndDate != null
-                          ? DateTimeRange(start: provider.filterStartDate!, end: provider.filterEndDate!)
-                          : null,
+              SizedBox(height: 16),
+
+              // Date Range
+              Text('Date Range', style: TextStyle(fontWeight: FontWeight.w600)),
+              SizedBox(height: 8),
+              Row(
+                children: [
+                  _DateRangeButton(
+                    label: 'Today',
+                    selected:
+                        provider.filterStartDate != null &&
+                        _isSameDay(
+                          provider.filterStartDate!,
+                          DateTime.now().subtract(const Duration(hours: 24)),
+                        ),
+                    onTap: () => provider.setDateRange(
+                      DateTime.now().subtract(const Duration(hours: 24)),
+                      DateTime.now(),
                     ),
-                  );
-                  if (range != null) {
-                    provider.setDateRange(range.start, range.end);
-                  }
-                },
+                  ),
+                  SizedBox(width: 8),
+                  _DateRangeButton(
+                    label: 'This Week',
+                    selected:
+                        provider.filterStartDate != null &&
+                        _isSameWeek(provider.filterStartDate!),
+                    onTap: () => provider.setDateRange(
+                      DateTime.now().subtract(const Duration(days: 7)),
+                      DateTime.now(),
+                    ),
+                  ),
+                  SizedBox(width: 8),
+                  _CalendarButton(
+                    selected:
+                        provider.filterStartDate != null &&
+                        !_isSameDay(
+                          provider.filterStartDate!,
+                          DateTime.now().subtract(const Duration(hours: 24)),
+                        ) &&
+                        !_isSameWeek(provider.filterStartDate!),
+                    onTap: () async {
+                      final range = await showModalBottomSheet<DateTimeRange>(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => _GranolaDateRangePicker(
+                          initialRange:
+                              provider.filterStartDate != null &&
+                                  provider.filterEndDate != null
+                              ? DateTimeRange(
+                                  start: provider.filterStartDate!,
+                                  end: provider.filterEndDate!,
+                                )
+                              : null,
+                        ),
+                      );
+                      if (range != null) {
+                        provider.setDateRange(range.start, range.end);
+                      }
+                    },
+                  ),
+                ],
+              ),
+
+              SizedBox(height: 24),
+
+              // Speakers
+              if (provider.uniqueSpeakers.isNotEmpty) ...[
+                Text('Speakers', style: TextStyle(fontWeight: FontWeight.w600)),
+                SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: provider.uniqueSpeakers
+                      .map(
+                        (s) => FilterChip(
+                          label: Text(s),
+                          selected: provider.filterSpeakers.contains(s),
+                          onSelected: (_) => provider.toggleSpeakerFilter(s),
+                          backgroundColor: context.appSurfaceVariant,
+                          selectedColor: context.appPrimary.withValues(
+                            alpha: 0.2,
+                          ),
+                          checkmarkColor: context.appPrimary,
+                        ),
+                      )
+                      .toList(),
+                ),
+                SizedBox(height: 24),
+              ],
+
+              // Tags
+              if (provider.uniqueTags.isNotEmpty) ...[
+                Text('Tags', style: TextStyle(fontWeight: FontWeight.w600)),
+                SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  children: provider.uniqueTags
+                      .map(
+                        (t) => FilterChip(
+                          label: Text('#$t'),
+                          selected: provider.filterTags.contains(t),
+                          onSelected: (_) => provider.toggleTagFilter(t),
+                          backgroundColor: context.appSurfaceVariant,
+                          selectedColor: context.appPrimary.withValues(
+                            alpha: 0.2,
+                          ),
+                        ),
+                      )
+                      .toList(),
+                ),
+                SizedBox(height: 24),
+              ],
+
+              SizedBox(height: 8),
+
+              // Action Items Toggle
+              SwitchListTile(
+                title: Text(
+                  'Action Items Only',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16),
+                ),
+                subtitle: Text(
+                  'Surface tasks extracted by AI',
+                  style: TextStyle(fontSize: 13),
+                ),
+                value: provider.filterActionItemsOnly,
+                onChanged: (val) => provider.setActionItemsOnly(val),
+                contentPadding: EdgeInsets.zero,
+                activeThumbColor: context.appPrimary,
+              ),
+
+              SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: context.appPrimary,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: Text('Show Results'),
+                ),
               ),
             ],
           ),
-          
-          SizedBox(height: 24),
-          
-          // Speakers
-          if (provider.uniqueSpeakers.isNotEmpty) ...[
-            Text('Speakers', style: TextStyle(fontWeight: FontWeight.w600)),
-            SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: provider.uniqueSpeakers.map((s) => FilterChip(
-                label: Text(s),
-                selected: provider.filterSpeakers.contains(s),
-                onSelected: (_) => provider.toggleSpeakerFilter(s),
-                backgroundColor: context.appSurfaceVariant,
-                selectedColor: context.appPrimary.withValues(alpha: 0.2),
-                checkmarkColor: context.appPrimary,
-              )).toList(),
-            ),
-            SizedBox(height: 24),
-          ],
-          
-          // Tags
-          if (provider.uniqueTags.isNotEmpty) ...[
-            Text('Tags', style: TextStyle(fontWeight: FontWeight.w600)),
-            SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              children: provider.uniqueTags.map((t) => FilterChip(
-                label: Text('#$t'),
-                selected: provider.filterTags.contains(t),
-                onSelected: (_) => provider.toggleTagFilter(t),
-                backgroundColor: context.appSurfaceVariant,
-                selectedColor: context.appPrimary.withValues(alpha: 0.2),
-              )).toList(),
-            ),
-            SizedBox(height: 24),
-          ],
-          
-          SizedBox(height: 8),
-          
-          // Action Items Toggle
-          SwitchListTile(
-            title: Text('Action Items Only', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 16)),
-            subtitle: Text('Surface tasks extracted by AI', style: TextStyle(fontSize: 13)),
-            value: provider.filterActionItemsOnly,
-            onChanged: (val) => provider.setActionItemsOnly(val),
-            contentPadding: EdgeInsets.zero,
-            activeThumbColor: context.appPrimary,
-          ),
-          
-          SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: context.appPrimary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-              ),
-              child: Text('Show Results'),
-            ),
-          ),
-        ],
-      ),
+        );
+      },
     );
-  },
-);
   }
 
   bool _isSameDay(DateTime a, DateTime b) {
@@ -865,7 +1022,8 @@ class _GranolaDateRangePicker extends StatefulWidget {
   const _GranolaDateRangePicker({this.initialRange});
 
   @override
-  State<_GranolaDateRangePicker> createState() => _GranolaDateRangePickerState();
+  State<_GranolaDateRangePicker> createState() =>
+      _GranolaDateRangePickerState();
 }
 
 class _GranolaDateRangePickerState extends State<_GranolaDateRangePicker> {
@@ -875,8 +1033,18 @@ class _GranolaDateRangePickerState extends State<_GranolaDateRangePicker> {
   bool _isMonthYearSelection = false;
 
   final List<String> _months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
 
   @override
@@ -918,7 +1086,9 @@ class _GranolaDateRangePickerState extends State<_GranolaDateRangePicker> {
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom + 20),
+      padding: EdgeInsets.only(
+        bottom: MediaQuery.of(context).padding.bottom + 20,
+      ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -939,7 +1109,10 @@ class _GranolaDateRangePickerState extends State<_GranolaDateRangePicker> {
               children: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: Text('Cancel', style: TextStyle(color: context.appTextSecondary)),
+                  child: Text(
+                    'Cancel',
+                    style: TextStyle(color: context.appTextSecondary),
+                  ),
                 ),
                 Text(
                   _startDate != null && _endDate != null
@@ -949,12 +1122,17 @@ class _GranolaDateRangePickerState extends State<_GranolaDateRangePicker> {
                 ),
                 TextButton(
                   onPressed: _startDate != null && _endDate != null
-                      ? () => Navigator.pop(context, DateTimeRange(start: _startDate!, end: _endDate!))
+                      ? () => Navigator.pop(
+                          context,
+                          DateTimeRange(start: _startDate!, end: _endDate!),
+                        )
                       : null,
                   child: Text(
                     'Save',
                     style: TextStyle(
-                      color: _startDate != null && _endDate != null ? context.appPrimary : context.appTextTertiary,
+                      color: _startDate != null && _endDate != null
+                          ? context.appPrimary
+                          : context.appTextTertiary,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -963,7 +1141,7 @@ class _GranolaDateRangePickerState extends State<_GranolaDateRangePicker> {
             ),
           ),
           Divider(height: 32),
-          
+
           // Month/Year Selector Header
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -972,18 +1150,30 @@ class _GranolaDateRangePickerState extends State<_GranolaDateRangePicker> {
               children: [
                 IconButton(
                   icon: Icon(Icons.chevron_left_rounded),
-                  onPressed: () => setState(() => _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month - 1)),
+                  onPressed: () => setState(
+                    () => _focusedMonth = DateTime(
+                      _focusedMonth.year,
+                      _focusedMonth.month - 1,
+                    ),
+                  ),
                 ),
                 GestureDetector(
-                  onTap: () => setState(() => _isMonthYearSelection = !_isMonthYearSelection),
+                  onTap: () => setState(
+                    () => _isMonthYearSelection = !_isMonthYearSelection,
+                  ),
                   child: Row(
                     children: [
                       Text(
                         '${_months[_focusedMonth.month - 1]} ${_focusedMonth.year}',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 17),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 17,
+                        ),
                       ),
                       Icon(
-                        _isMonthYearSelection ? Icons.arrow_drop_up_rounded : Icons.arrow_drop_down_rounded,
+                        _isMonthYearSelection
+                            ? Icons.arrow_drop_up_rounded
+                            : Icons.arrow_drop_down_rounded,
                         color: context.appPrimary,
                       ),
                     ],
@@ -991,7 +1181,12 @@ class _GranolaDateRangePickerState extends State<_GranolaDateRangePicker> {
                 ),
                 IconButton(
                   icon: Icon(Icons.chevron_right_rounded),
-                  onPressed: () => setState(() => _focusedMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1)),
+                  onPressed: () => setState(
+                    () => _focusedMonth = DateTime(
+                      _focusedMonth.year,
+                      _focusedMonth.month + 1,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -1017,7 +1212,12 @@ class _GranolaDateRangePickerState extends State<_GranolaDateRangePicker> {
             children: [
               IconButton(
                 icon: Icon(Icons.arrow_left_rounded),
-                onPressed: () => setState(() => _focusedMonth = DateTime(_focusedMonth.year - 1, _focusedMonth.month)),
+                onPressed: () => setState(
+                  () => _focusedMonth = DateTime(
+                    _focusedMonth.year - 1,
+                    _focusedMonth.month,
+                  ),
+                ),
               ),
               Text(
                 '${_focusedMonth.year}',
@@ -1025,7 +1225,12 @@ class _GranolaDateRangePickerState extends State<_GranolaDateRangePicker> {
               ),
               IconButton(
                 icon: Icon(Icons.arrow_right_rounded),
-                onPressed: () => setState(() => _focusedMonth = DateTime(_focusedMonth.year + 1, _focusedMonth.month)),
+                onPressed: () => setState(
+                  () => _focusedMonth = DateTime(
+                    _focusedMonth.year + 1,
+                    _focusedMonth.month,
+                  ),
+                ),
               ),
             ],
           ),
@@ -1054,15 +1259,25 @@ class _GranolaDateRangePickerState extends State<_GranolaDateRangePicker> {
                 child: Container(
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
-                    color: isSelected ? context.appPrimary.withValues(alpha: 0.1) : Colors.transparent,
+                    color: isSelected
+                        ? context.appPrimary.withValues(alpha: 0.1)
+                        : Colors.transparent,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: isSelected ? context.appPrimary : Colors.transparent),
+                    border: Border.all(
+                      color: isSelected
+                          ? context.appPrimary
+                          : Colors.transparent,
+                    ),
                   ),
                   child: Text(
                     _months[index].substring(0, 3),
                     style: TextStyle(
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      color: isSelected ? context.appPrimary : context.appTextPrimary,
+                      fontWeight: isSelected
+                          ? FontWeight.w700
+                          : FontWeight.w500,
+                      color: isSelected
+                          ? context.appPrimary
+                          : context.appTextPrimary,
                     ),
                   ),
                 ),
@@ -1075,8 +1290,13 @@ class _GranolaDateRangePickerState extends State<_GranolaDateRangePicker> {
   }
 
   Widget _buildDayPicker() {
-    final daysInMonth = DateTime(_focusedMonth.year, _focusedMonth.month + 1, 0).day;
-    final firstDayOffset = DateTime(_focusedMonth.year, _focusedMonth.month, 1).weekday % 7;
+    final daysInMonth = DateTime(
+      _focusedMonth.year,
+      _focusedMonth.month + 1,
+      0,
+    ).day;
+    final firstDayOffset =
+        DateTime(_focusedMonth.year, _focusedMonth.month, 1).weekday % 7;
     final weekdayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
 
     return Column(
@@ -1085,7 +1305,18 @@ class _GranolaDateRangePickerState extends State<_GranolaDateRangePicker> {
           padding: const EdgeInsets.symmetric(horizontal: 24),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: weekdayLabels.map((l) => Text(l, style: TextStyle(fontSize: 12, color: context.appTextTertiary, fontWeight: FontWeight.w600))).toList(),
+            children: weekdayLabels
+                .map(
+                  (l) => Text(
+                    l,
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: context.appTextTertiary,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                )
+                .toList(),
           ),
         ),
         SizedBox(height: 12),
@@ -1102,10 +1333,15 @@ class _GranolaDateRangePickerState extends State<_GranolaDateRangePicker> {
             ),
             itemBuilder: (context, index) {
               if (index < firstDayOffset) return SizedBox();
-              
+
               final day = index - firstDayOffset + 1;
-              final date = DateTime(_focusedMonth.year, _focusedMonth.month, day);
-              final isStart = _startDate != null && _isSameDay(date, _startDate!);
+              final date = DateTime(
+                _focusedMonth.year,
+                _focusedMonth.month,
+                day,
+              );
+              final isStart =
+                  _startDate != null && _isSameDay(date, _startDate!);
               final isEnd = _endDate != null && _isSameDay(date, _endDate!);
               final isRange = _isDuringRange(date);
               final isToday = _isSameDay(date, DateTime.now());
@@ -1119,7 +1355,9 @@ class _GranolaDateRangePickerState extends State<_GranolaDateRangePicker> {
                     if (isRange)
                       Container(
                         margin: const EdgeInsets.symmetric(vertical: 4),
-                        decoration: BoxDecoration(color: context.appPrimaryLight),
+                        decoration: BoxDecoration(
+                          color: context.appPrimaryLight,
+                        ),
                       ),
                     if (isStart)
                       Align(
@@ -1129,7 +1367,9 @@ class _GranolaDateRangePickerState extends State<_GranolaDateRangePicker> {
                           height: 32,
                           margin: const EdgeInsets.symmetric(vertical: 4),
                           decoration: BoxDecoration(
-                            color: _endDate != null ? context.appPrimaryLight : Colors.transparent,
+                            color: _endDate != null
+                                ? context.appPrimaryLight
+                                : Colors.transparent,
                           ),
                         ),
                       ),
@@ -1149,16 +1389,28 @@ class _GranolaDateRangePickerState extends State<_GranolaDateRangePicker> {
                       width: 34,
                       height: 34,
                       decoration: BoxDecoration(
-                        color: isStart || isEnd ? context.appPrimary : Colors.transparent,
+                        color: isStart || isEnd
+                            ? context.appPrimary
+                            : Colors.transparent,
                         shape: BoxShape.circle,
-                        border: isToday && !isStart && !isEnd ? Border.all(color: context.appPrimary.withValues(alpha: 0.5)) : null,
+                        border: isToday && !isStart && !isEnd
+                            ? Border.all(
+                                color: context.appPrimary.withValues(
+                                  alpha: 0.5,
+                                ),
+                              )
+                            : null,
                       ),
                       alignment: Alignment.center,
                       child: Text(
                         '$day',
                         style: TextStyle(
-                          color: isStart || isEnd ? Colors.white : context.appTextPrimary,
-                          fontWeight: isStart || isEnd || isToday ? FontWeight.w700 : FontWeight.w400,
+                          color: isStart || isEnd
+                              ? Colors.white
+                              : context.appTextPrimary,
+                          fontWeight: isStart || isEnd || isToday
+                              ? FontWeight.w700
+                              : FontWeight.w400,
                           fontSize: 14,
                         ),
                       ),
@@ -1179,7 +1431,11 @@ class _DateRangeButton extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  const _DateRangeButton({required this.label, required this.selected, required this.onTap});
+  const _DateRangeButton({
+    required this.label,
+    required this.selected,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -26,9 +26,7 @@ class MeetingListTile extends StatelessWidget {
     return GestureDetector(
       onTap: () {
         Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => DetailScreen(meeting: meeting),
-          ),
+          MaterialPageRoute(builder: (_) => DetailScreen(meeting: meeting)),
         );
       },
       child: Container(
@@ -50,26 +48,24 @@ class MeetingListTile extends StatelessWidget {
                 children: [
                   Text(
                     meeting.title,
-                    style: TextStyle(
-                      color: context.appTextPrimary,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                      fontFamily: AppTheme.fontFamily,
-                    ),
+                    style: context.cardTitle,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: 8),
                   Row(
                     children: [
-                      Icon(Icons.calendar_today_rounded, size: 14, color: context.appTextSecondary),
+                      Icon(
+                        Icons.calendar_today_rounded,
+                        size: 14,
+                        color: context.appTextSecondary,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         meeting.date,
                         style: TextStyle(
-                          color: context.appTextSecondary, 
+                          color: context.appTextSecondary,
                           fontSize: 13,
-                          fontFamily: AppTheme.fontFamily,
                         ),
                       ),
                     ],
@@ -77,14 +73,17 @@ class MeetingListTile extends StatelessWidget {
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Icon(Icons.access_time_rounded, size: 14, color: context.appTextSecondary),
+                      Icon(
+                        Icons.access_time_rounded,
+                        size: 14,
+                        color: context.appTextSecondary,
+                      ),
                       const SizedBox(width: 4),
                       Text(
                         meeting.duration,
                         style: TextStyle(
-                          color: context.appTextSecondary, 
+                          color: context.appTextSecondary,
                           fontSize: 13,
-                          fontFamily: AppTheme.fontFamily,
                         ),
                       ),
                       if (meeting.speakerMapping.isNotEmpty) ...[
@@ -100,8 +99,12 @@ class MeetingListTile extends StatelessWidget {
                                   radius: 10,
                                   backgroundColor: context.appPrimaryLight,
                                   child: Text(
-                                    meeting.speakerMapping.values.first[0].toUpperCase(), 
-                                    style: TextStyle(fontSize: 10, color: context.appPrimary)
+                                    meeting.speakerMapping.values.first[0]
+                                        .toUpperCase(),
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: context.appPrimary,
+                                    ),
                                   ),
                                 ),
                               ),
@@ -112,8 +115,13 @@ class MeetingListTile extends StatelessWidget {
                                     radius: 10,
                                     backgroundColor: context.appSurfaceVariant,
                                     child: Text(
-                                      meeting.speakerMapping.values.elementAt(1)[0].toUpperCase(), 
-                                      style: TextStyle(fontSize: 10, color: context.appTextPrimary)
+                                      meeting.speakerMapping.values
+                                          .elementAt(1)[0]
+                                          .toUpperCase(),
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        color: context.appTextPrimary,
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -132,7 +140,10 @@ class MeetingListTile extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
                   decoration: BoxDecoration(
                     color: isTranscribed
                         ? context.appPrimary
@@ -141,12 +152,13 @@ class MeetingListTile extends StatelessWidget {
                   ),
                   child: Text(
                     statusText,
-                    style: TextStyle(
-                      color: isTranscribed ? Colors.white : context.appTextPrimary,
+                    style: GoogleFonts.manrope(
+                      color: isTranscribed
+                          ? Colors.white
+                          : context.appTextPrimary,
                       fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w700,
                       letterSpacing: 0.5,
-                      fontFamily: AppTheme.fontFamily,
                     ),
                   ),
                 ),
@@ -155,8 +167,14 @@ class MeetingListTile extends StatelessWidget {
                   builder: (context, provider, _) => PopupMenuButton<String>(
                     color: context.appSurface,
                     surfaceTintColor: Colors.transparent,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    icon: Icon(Icons.more_horiz_rounded, size: 20, color: context.appTextSecondary),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    icon: Icon(
+                      Icons.more_horiz_rounded,
+                      size: 20,
+                      color: context.appTextSecondary,
+                    ),
                     padding: EdgeInsets.zero,
                     itemBuilder: (context) => [
                       PopupMenuItem(
@@ -172,15 +190,22 @@ class MeetingListTile extends StatelessWidget {
                       ),
                       PopupMenuItem(
                         value: 'delete',
-                        child: Text('Delete', style: GoogleFonts.manrope(color: Colors.red)),
+                        child: Text(
+                          'Delete',
+                          style: GoogleFonts.manrope(color: Colors.red),
+                        ),
                       ),
                     ],
                     onSelected: (value) async {
                       if (value == 'favorite' && onFavoriteToggle != null) {
                         onFavoriteToggle!();
                       } else if (value == 'rename') {
-                        final newTitle = await _showRenameDialog(context, meeting.title);
-                        if (newTitle != null) provider.renameMeeting(meeting.id, newTitle);
+                        final newTitle = await _showRenameDialog(
+                          context,
+                          meeting.title,
+                        );
+                        if (newTitle != null)
+                          provider.renameMeeting(meeting.id, newTitle);
                       } else if (value == 'delete') {
                         final confirm = await _showDeleteConfirm(context);
                         if (confirm == true && onDelete != null) onDelete!();
@@ -196,14 +221,20 @@ class MeetingListTile extends StatelessWidget {
     );
   }
 
-  Future<String?> _showRenameDialog(BuildContext context, String currentTitle) async {
+  Future<String?> _showRenameDialog(
+    BuildContext context,
+    String currentTitle,
+  ) async {
     final controller = TextEditingController(text: currentTitle);
     return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: context.appSurface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Rename', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
+        title: Text(
+          'Rename',
+          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
+        ),
         content: TextField(
           controller: controller,
           autofocus: true,
@@ -213,7 +244,10 @@ class MeetingListTile extends StatelessWidget {
             hintStyle: GoogleFonts.manrope(color: context.appTextTertiary),
             filled: true,
             fillColor: context.appSurfaceVariant,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(12),
               borderSide: BorderSide(color: context.appPrimary, width: 1.5),
@@ -221,10 +255,19 @@ class MeetingListTile extends StatelessWidget {
           ),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: Text('Cancel', style: GoogleFonts.manrope())),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.manrope()),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, controller.text),
-            child: Text('Save', style: GoogleFonts.manrope(color: context.appPrimary, fontWeight: FontWeight.w600)),
+            child: Text(
+              'Save',
+              style: GoogleFonts.manrope(
+                color: context.appPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),
@@ -237,14 +280,26 @@ class MeetingListTile extends StatelessWidget {
       builder: (context) => AlertDialog(
         backgroundColor: context.appSurface,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Delete Meeting?', style: GoogleFonts.manrope(fontWeight: FontWeight.w700)),
-        content: Text('This action cannot be undone.', style: GoogleFonts.manrope(color: context.appTextSecondary)),
+        title: Text(
+          'Delete Meeting?',
+          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
+        ),
+        content: Text(
+          'This action cannot be undone.',
+          style: GoogleFonts.manrope(color: context.appTextSecondary),
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: Text('Cancel', style: GoogleFonts.manrope())),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: GoogleFonts.manrope()),
+          ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
             style: TextButton.styleFrom(foregroundColor: Colors.red),
-            child: Text('Delete', style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.manrope(fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),

@@ -13,7 +13,8 @@ class RecordScreen extends StatefulWidget {
   State<RecordScreen> createState() => _RecordScreenState();
 }
 
-class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderStateMixin {
+class _RecordScreenState extends State<RecordScreen>
+    with SingleTickerProviderStateMixin {
   String? _pendingTitle;
   late AnimationController _pulseController;
   final ScrollController _scrollController = ScrollController();
@@ -64,10 +65,16 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
     }
   }
 
-  Future<void> _handleStop(BuildContext context, MeetingProvider provider) async {
+  Future<void> _handleStop(
+    BuildContext context,
+    MeetingProvider provider,
+  ) async {
     final path = await provider.stopRecording();
     if (path != null) {
-      final meeting = await provider.createMeetingFromRecording(path, title: _pendingTitle);
+      final meeting = await provider.createMeetingFromRecording(
+        path,
+        title: _pendingTitle,
+      );
       setState(() => _pendingTitle = null);
       if (context.mounted) {
         // Switch back to library tab and push detail screen on top
@@ -80,7 +87,20 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
   }
 
   String _monthName(int month) {
-    const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const m = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return m[month - 1];
   }
 
@@ -96,7 +116,10 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Name your recording',
-          style: GoogleFonts.manrope(fontWeight: FontWeight.w700, color: context.appTextPrimary),
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w700,
+            color: context.appTextPrimary,
+          ),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -104,7 +127,10 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
           children: [
             Text(
               'Give your meeting a name to get started.',
-              style: GoogleFonts.manrope(fontSize: 14, color: context.appTextSecondary),
+              style: GoogleFonts.manrope(
+                fontSize: 14,
+                color: context.appTextSecondary,
+              ),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -131,16 +157,24 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Cancel', style: GoogleFonts.manrope(color: context.appTextSecondary)),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.manrope(color: context.appTextSecondary),
+            ),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, controller.text),
             style: ElevatedButton.styleFrom(
               backgroundColor: context.appPrimary,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            child: Text('Start', style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
+            child: Text(
+              'Start',
+              style: GoogleFonts.manrope(fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
@@ -154,7 +188,7 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
         final isRecording = provider.recordingState == RecordingState.recording;
         final isPaused = provider.recordingState == RecordingState.paused;
         final isIdle = provider.recordingState == RecordingState.idle;
-        
+
         final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
         // Granola specified hardcoded mockup colors for overrides where appropriate
@@ -181,20 +215,28 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                   child: Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.05)
+                          : Colors.black.withValues(alpha: 0.03),
                       shape: BoxShape.circle,
                     ),
-                    child: Icon(Icons.arrow_back_ios_new_rounded, color: textPrimary, size: 16),
+                    child: Icon(
+                      Icons.arrow_back_ios_new_rounded,
+                      color: textPrimary,
+                      size: 16,
+                    ),
                   ),
                 ),
-                
+
                 // Status Pill / Title
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     if (!isIdle)
                       FadeTransition(
-                        opacity: isRecording ? _pulseController : const AlwaysStoppedAnimation(1.0),
+                        opacity: isRecording
+                            ? _pulseController
+                            : const AlwaysStoppedAnimation(1.0),
                         child: Container(
                           width: 10,
                           height: 10,
@@ -209,32 +251,23 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                       children: [
                         Text(
                           _pendingTitle ?? 'New Recording',
-                          style: GoogleFonts.manrope(color: textPrimary, fontSize: 16, fontWeight: FontWeight.w700),
+                          style: context.cardTitle,
                         ),
-                        if (!isIdle) ... [
+                        if (!isIdle) ...[
                           const SizedBox(height: 2),
                           Text(
                             isPaused ? 'PAUSED' : 'LIVE RECORDING',
-                            style: GoogleFonts.manrope(color: textSecondary, fontSize: 9, fontWeight: FontWeight.w700, letterSpacing: 1),
-                          )
-                        ]
+                            style: GoogleFonts.manrope(
+                              color: textSecondary,
+                              fontSize: 9,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 1,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ],
-                ),
-
-                // Settings Button (matching mockup)
-                InkWell(
-                  onTap: () {},
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.03),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(Icons.settings_outlined, color: scribeTeal, size: 20),
-                  ),
                 ),
               ],
             ),
@@ -242,7 +275,7 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
           body: Column(
             children: [
               const SizedBox(height: 24),
-              
+
               // 1. Large Minimalist Timer
               Text(
                 _formatDuration(provider.recordingDuration),
@@ -256,7 +289,9 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
               const SizedBox(height: 8),
               Text(
                 'ELAPSED TIME',
-                style: GoogleFonts.manrope(color: scribeTeal.withValues(alpha: 0.6), fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.5),
+                style: context.sectionLabel.copyWith(
+                  color: scribeTeal.withValues(alpha: 0.6),
+                ),
               ),
 
               const SizedBox(height: 24),
@@ -269,10 +304,14 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                   decoration: BoxDecoration(
                     color: surfaceColor,
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: context.appSeparator.withValues(alpha: 0.5)),
+                    border: Border.all(
+                      color: context.appSeparator.withValues(alpha: 0.5),
+                    ),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.03),
+                        color: Colors.black.withValues(
+                          alpha: isDark ? 0.3 : 0.03,
+                        ),
                         blurRadius: 20,
                         offset: const Offset(0, 10),
                       ),
@@ -283,7 +322,11 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                           child: Text(
                             "Ready when you are.\nTap record to begin.",
                             textAlign: TextAlign.center,
-                            style: GoogleFonts.manrope(color: textSecondary, fontSize: 16, height: 1.5),
+                            style: GoogleFonts.manrope(
+                              color: textSecondary,
+                              fontSize: 16,
+                              height: 1.5,
+                            ),
                           ),
                         )
                       : Center(
@@ -295,14 +338,18 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                                     ? _pulseController
                                     : const AlwaysStoppedAnimation(1.0),
                                 child: Icon(
-                                  isPaused ? Icons.pause_circle_outline : Icons.graphic_eq_rounded,
+                                  isPaused
+                                      ? Icons.pause_circle_outline
+                                      : Icons.graphic_eq_rounded,
                                   color: isPaused ? Colors.orange : scribeTeal,
                                   size: 48,
                                 ),
                               ),
                               const SizedBox(height: 16),
                               Text(
-                                isPaused ? 'Recording paused' : 'Recording in progress…',
+                                isPaused
+                                    ? 'Recording paused'
+                                    : 'Recording in progress…',
                                 style: GoogleFonts.manrope(
                                   color: textSecondary,
                                   fontSize: 16,
@@ -324,7 +371,7 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                         ),
                 ),
               ),
-              
+
               const SizedBox(height: 24),
 
               // 3. Control Buttons
@@ -334,10 +381,16 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                   children: [
                     // Bookmark (Disabled if idle)
-                     Opacity(
-                       opacity: isIdle ? 0.3 : 1.0,
-                       child: _buildSecondaryButton(Icons.bookmark_border_rounded, 'BOOKMARK', scribeTeal, isDark, () {}),
-                     ),
+                    Opacity(
+                      opacity: isIdle ? 0.3 : 1.0,
+                      child: _buildSecondaryButton(
+                        Icons.bookmark_border_rounded,
+                        'BOOKMARK',
+                        scribeTeal,
+                        isDark,
+                        () {},
+                      ),
+                    ),
 
                     // Main Action (Record if idle, Stop if active)
                     GestureDetector(
@@ -359,12 +412,14 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
                           color: isIdle ? scribeTeal : stopRed,
                           shape: BoxShape.circle,
                           boxShadow: [
-                             BoxShadow(
-                                color: (isIdle ? scribeTeal : stopRed).withValues(alpha: 0.3),
-                                blurRadius: 20,
-                                offset: const Offset(0, 8),
-                             )
-                          ]
+                            BoxShadow(
+                              color: (isIdle ? scribeTeal : stopRed).withValues(
+                                alpha: 0.3,
+                              ),
+                              blurRadius: 20,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
                         ),
                         child: Center(
                           child: Icon(
@@ -378,22 +433,24 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
 
                     // Pause Button
                     Opacity(
-                       opacity: isIdle ? 0.3 : 1.0,
-                       child: _buildSecondaryButton(
-                         isPaused ? Icons.play_arrow_rounded : Icons.pause_rounded,
-                         isPaused ? 'RESUME' : 'PAUSE',
-                         scribeTeal,
-                         isDark,
-                         () {
-                           if (!isIdle) {
-                             if (isPaused) {
-                               provider.resumeRecording();
-                             } else {
-                               provider.pauseRecording();
-                             }
-                           }
-                         },
-                       ),
+                      opacity: isIdle ? 0.3 : 1.0,
+                      child: _buildSecondaryButton(
+                        isPaused
+                            ? Icons.play_arrow_rounded
+                            : Icons.pause_rounded,
+                        isPaused ? 'RESUME' : 'PAUSE',
+                        scribeTeal,
+                        isDark,
+                        () {
+                          if (!isIdle) {
+                            if (isPaused) {
+                              provider.resumeRecording();
+                            } else {
+                              provider.pauseRecording();
+                            }
+                          }
+                        },
+                      ),
                     ),
                   ],
                 ),
@@ -405,8 +462,13 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
     );
   }
 
-
-  Widget _buildSecondaryButton(IconData icon, String label, Color teal, bool isDark, VoidCallback onTap) {
+  Widget _buildSecondaryButton(
+    IconData icon,
+    String label,
+    Color teal,
+    bool isDark,
+    VoidCallback onTap,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Column(
@@ -417,14 +479,21 @@ class _RecordScreenState extends State<RecordScreen> with SingleTickerProviderSt
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               border: Border.all(color: teal.withValues(alpha: 0.2)),
-              color: isDark ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.02),
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.03)
+                  : Colors.black.withValues(alpha: 0.02),
             ),
             child: Icon(icon, color: teal, size: 26),
           ),
           const SizedBox(height: 12),
           Text(
             label,
-            style: GoogleFonts.manrope(color: context.appTextPrimary, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+            style: GoogleFonts.manrope(
+              color: context.appTextPrimary,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+              letterSpacing: 0.5,
+            ),
           ),
         ],
       ),

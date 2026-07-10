@@ -1,14 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
 import 'package:device_calendar/device_calendar.dart';
 import '../theme/app_theme.dart';
-import '../providers/settings_provider.dart';
 import '../services/calendar_service.dart';
+import '../widgets/profile_avatar.dart';
 import '../widgets/show_scribe_date_picker.dart';
 import 'package:intl/intl.dart';
 import '../navigation/app_shell.dart';
-
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -23,7 +21,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   late List<Map<String, dynamic>> _dates;
   late DateTime _now;
   DateTime _currentWeekStart = DateTime.now();
-  
+
   List<Event> _events = [];
   bool _isLoading = true;
 
@@ -33,7 +31,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     _now = DateTime.now();
     _currentWeekStart = _now.subtract(Duration(days: _now.weekday - 1));
     _generateWeek();
-    _selectedDateIndex = _dates.indexWhere((d) => (d['fullDate'] as DateTime).day == _now.day);
+    _selectedDateIndex = _dates.indexWhere(
+      (d) => (d['fullDate'] as DateTime).day == _now.day,
+    );
     if (_selectedDateIndex == -1) _selectedDateIndex = 0;
     _fetchEvents();
   }
@@ -62,15 +62,34 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   String _getMonthName(int month) {
-    return ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY', 'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER'][month - 1];
+    return [
+      'JANUARY',
+      'FEBRUARY',
+      'MARCH',
+      'APRIL',
+      'MAY',
+      'JUNE',
+      'JULY',
+      'AUGUST',
+      'SEPTEMBER',
+      'OCTOBER',
+      'NOVEMBER',
+      'DECEMBER',
+    ][month - 1];
   }
 
   Future<void> _openDatePicker() async {
-    final DateTime currentSelected = _dates[_selectedDateIndex]['fullDate'] as DateTime;
-    final DateTime? pickedDate = await showScribeDatePicker(context, currentSelected);
+    final DateTime currentSelected =
+        _dates[_selectedDateIndex]['fullDate'] as DateTime;
+    final DateTime? pickedDate = await showScribeDatePicker(
+      context,
+      currentSelected,
+    );
     if (pickedDate != null && mounted) {
       setState(() {
-        _currentWeekStart = pickedDate.subtract(Duration(days: pickedDate.weekday - 1));
+        _currentWeekStart = pickedDate.subtract(
+          Duration(days: pickedDate.weekday - 1),
+        );
         _generateWeek();
         _selectedDateIndex = pickedDate.weekday - 1;
       });
@@ -91,7 +110,10 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       builder: (context) {
         return AlertDialog(
           backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-          title: Text("Schedule Meeting", style: GoogleFonts.manrope(color: textPrimary)),
+          title: Text(
+            "Schedule Meeting",
+            style: GoogleFonts.manrope(color: textPrimary),
+          ),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -100,7 +122,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 style: TextStyle(color: textPrimary),
                 decoration: InputDecoration(
                   labelText: "Title",
-                  labelStyle: TextStyle(color: textPrimary.withValues(alpha: 0.6)),
+                  labelStyle: TextStyle(
+                    color: textPrimary.withValues(alpha: 0.6),
+                  ),
                 ),
               ),
               TextField(
@@ -108,7 +132,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                 style: TextStyle(color: textPrimary),
                 decoration: InputDecoration(
                   labelText: "Time (HH:MM)",
-                  labelStyle: TextStyle(color: textPrimary.withValues(alpha: 0.6)),
+                  labelStyle: TextStyle(
+                    color: textPrimary.withValues(alpha: 0.6),
+                  ),
                 ),
               ),
             ],
@@ -133,27 +159,56 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         if (timeParts.length == 2) {
           final int hour = int.parse(timeParts[0]);
           final int minute = int.parse(timeParts[1]);
-          final selectedDate = preSelectedDate ?? _dates[_selectedDateIndex]['fullDate'] as DateTime;
-          
-          final startTime = DateTime(selectedDate.year, selectedDate.month, selectedDate.day, hour, minute);
-          final endTime = startTime.add(const Duration(hours: 1)); // Default 1 hour meeting
+          final selectedDate =
+              preSelectedDate ??
+              _dates[_selectedDateIndex]['fullDate'] as DateTime;
 
-          final success = await _calendarService.addEvent(titleController.text, startTime, endTime);
+          final startTime = DateTime(
+            selectedDate.year,
+            selectedDate.month,
+            selectedDate.day,
+            hour,
+            minute,
+          );
+          final endTime = startTime.add(
+            const Duration(hours: 1),
+          ); // Default 1 hour meeting
+
+          final success = await _calendarService.addEvent(
+            titleController.text,
+            startTime,
+            endTime,
+          );
           if (success && mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Meeting scheduled!', style: GoogleFonts.manrope())),
+              SnackBar(
+                content: Text(
+                  'Meeting scheduled!',
+                  style: GoogleFonts.manrope(),
+                ),
+              ),
             );
             _fetchEvents(); // Refresh events
           } else if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Failed to schedule meeting.', style: GoogleFonts.manrope())),
+              SnackBar(
+                content: Text(
+                  'Failed to schedule meeting.',
+                  style: GoogleFonts.manrope(),
+                ),
+              ),
             );
           }
         }
       } catch (e) {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Invalid time format.', style: GoogleFonts.manrope())),
+            SnackBar(
+              content: Text(
+                'Invalid time format.',
+                style: GoogleFonts.manrope(),
+              ),
+            ),
           );
         }
       }
@@ -162,7 +217,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final settings = context.watch<SettingsProvider>();
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     final Color surfaceColor = context.appSurface;
@@ -170,8 +224,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final Color textSecondary = context.appTextSecondary;
     final Color scribeTeal = context.appPrimary;
 
-    final currentMonth = _getMonthName((_dates[_selectedDateIndex]['fullDate'] as DateTime).month);
-    final currentYear = (_dates[_selectedDateIndex]['fullDate'] as DateTime).year;
+    final currentMonth = _getMonthName(
+      (_dates[_selectedDateIndex]['fullDate'] as DateTime).month,
+    );
+    final currentYear =
+        (_dates[_selectedDateIndex]['fullDate'] as DateTime).year;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -179,29 +236,15 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         scrolledUnderElevation: 0,
-        title: Text(
-          'Schedule',
-          style: GoogleFonts.manrope(
-            color: textPrimary,
-            fontWeight: FontWeight.bold,
-            fontSize: 24,
-            letterSpacing: -0.5,
-          ),
-        ),
+        title: Text('Schedule', style: context.appBarTitleLarge),
         actions: [
           IconButton(
             icon: Icon(Icons.add_rounded, color: textPrimary),
             onPressed: _scheduleMeeting,
           ),
-          Padding(
-            padding: const EdgeInsets.only(right: 16.0),
-            child: CircleAvatar(
-              radius: 16,
-              backgroundColor: isDark ? Colors.white10 : Colors.black12,
-              child: settings.userName.isNotEmpty 
-                ? Text(settings.userName[0].toUpperCase(), style: GoogleFonts.manrope(color: textPrimary, fontSize: 13, fontWeight: FontWeight.bold))
-                : Icon(Icons.person_outline, color: textPrimary, size: 20),
-            ),
+          const Padding(
+            padding: EdgeInsets.only(right: 16.0),
+            child: ProfileAvatar(),
           ),
         ],
       ),
@@ -220,15 +263,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     children: [
                       Text(
                         '$currentMonth $currentYear',
-                        style: GoogleFonts.manrope(
-                          color: textSecondary,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                          fontSize: 12,
-                        ),
+                        style: context.sectionLabel,
                       ),
                       const SizedBox(width: 4),
-                      Icon(Icons.keyboard_arrow_down, color: textSecondary, size: 16),
+                      Icon(
+                        Icons.keyboard_arrow_down,
+                        color: textSecondary,
+                        size: 16,
+                      ),
                     ],
                   ),
                   Row(
@@ -236,39 +278,61 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       GestureDetector(
                         onTap: () {
                           setState(() {
-                            _currentWeekStart = _currentWeekStart.subtract(const Duration(days: 7));
+                            _currentWeekStart = _currentWeekStart.subtract(
+                              const Duration(days: 7),
+                            );
                             _generateWeek();
                           });
                           _fetchEvents();
                         },
                         child: Container(
                           padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(shape: BoxShape.circle, color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
-                          child: Icon(Icons.chevron_left, color: textSecondary, size: 20),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.05)
+                                : Colors.black.withValues(alpha: 0.05),
+                          ),
+                          child: Icon(
+                            Icons.chevron_left,
+                            color: textSecondary,
+                            size: 20,
+                          ),
                         ),
                       ),
                       const SizedBox(width: 12),
                       GestureDetector(
                         onTap: () {
                           setState(() {
-                            _currentWeekStart = _currentWeekStart.add(const Duration(days: 7));
+                            _currentWeekStart = _currentWeekStart.add(
+                              const Duration(days: 7),
+                            );
                             _generateWeek();
                           });
                           _fetchEvents();
                         },
                         child: Container(
                           padding: const EdgeInsets.all(4),
-                          decoration: BoxDecoration(shape: BoxShape.circle, color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05)),
-                          child: Icon(Icons.chevron_right, color: textSecondary, size: 20),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.05)
+                                : Colors.black.withValues(alpha: 0.05),
+                          ),
+                          child: Icon(
+                            Icons.chevron_right,
+                            color: textSecondary,
+                            size: 20,
+                          ),
                         ),
                       ),
                     ],
-                  )
+                  ),
                 ],
               ),
             ),
           ),
-          
+
           const SizedBox(height: 16),
 
           // 2. Horizontal Date Picker
@@ -280,10 +344,12 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               itemCount: _dates.length,
               itemBuilder: (context, index) {
                 bool isSelected = _selectedDateIndex == index;
-                bool isToday = (_dates[index]['fullDate'] as DateTime).day == _now.day && 
-                               (_dates[index]['fullDate'] as DateTime).month == _now.month &&
-                               (_dates[index]['fullDate'] as DateTime).year == _now.year;
-                
+                bool isToday =
+                    (_dates[index]['fullDate'] as DateTime).day == _now.day &&
+                    (_dates[index]['fullDate'] as DateTime).month ==
+                        _now.month &&
+                    (_dates[index]['fullDate'] as DateTime).year == _now.year;
+
                 return GestureDetector(
                   onTap: () {
                     setState(() => _selectedDateIndex = index);
@@ -295,8 +361,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     decoration: BoxDecoration(
                       color: isSelected ? scribeTeal : Colors.transparent,
                       borderRadius: BorderRadius.circular(30),
-                      border: isToday && !isSelected 
-                          ? Border.all(color: scribeTeal.withValues(alpha: 0.3), width: 1.5) 
+                      border: isToday && !isSelected
+                          ? Border.all(
+                              color: scribeTeal.withValues(alpha: 0.3),
+                              width: 1.5,
+                            )
                           : null,
                     ),
                     child: Column(
@@ -305,7 +374,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                         Text(
                           _dates[index]['day']!,
                           style: GoogleFonts.manrope(
-                            color: isSelected ? Colors.white.withValues(alpha: 0.8) : textSecondary,
+                            color: isSelected
+                                ? Colors.white.withValues(alpha: 0.8)
+                                : textSecondary,
                             fontSize: 10,
                             fontWeight: FontWeight.w700,
                           ),
@@ -332,20 +403,24 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Upcoming Meetings',
-                  style: GoogleFonts.manrope(color: textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
-                ),
+                Text('Upcoming Meetings', style: context.sectionTitle),
                 if (!_isLoading && _events.isNotEmpty)
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color: scribeTeal.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       '${_events.length} Today',
-                      style: GoogleFonts.manrope(color: scribeTeal, fontSize: 12, fontWeight: FontWeight.bold),
+                      style: GoogleFonts.manrope(
+                        color: scribeTeal,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
               ],
@@ -354,35 +429,39 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
           // 3. Meeting List
           Expanded(
-            child: _isLoading 
+            child: _isLoading
                 ? Center(child: CircularProgressIndicator(color: scribeTeal))
                 : _events.isEmpty
-                    ? Center(
-                        child: Text(
-                          "No meetings scheduled.",
-                          style: GoogleFonts.manrope(color: textSecondary),
-                        ),
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        itemCount: _events.length,
-                        itemBuilder: (context, index) {
-                          final event = _events[index];
-                          final start = event.start != null ? DateFormat.jm().format(event.start!) : "?";
-                          final end = event.end != null ? DateFormat.jm().format(event.end!) : "?";
+                ? Center(
+                    child: Text(
+                      "No meetings scheduled.",
+                      style: GoogleFonts.manrope(color: textSecondary),
+                    ),
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    itemCount: _events.length,
+                    itemBuilder: (context, index) {
+                      final event = _events[index];
+                      final start = event.start != null
+                          ? DateFormat.jm().format(event.start!)
+                          : "?";
+                      final end = event.end != null
+                          ? DateFormat.jm().format(event.end!)
+                          : "?";
 
-                          return _buildMeetingCard(
-                            event.title ?? "Untitled Meeting",
-                            "$start - $end",
-                            null, // Real live status calculation could go here
-                            surfaceColor,
-                            textPrimary,
-                            textSecondary,
-                            scribeTeal,
-                            isDark,
-                          );
-                        },
-                      ),
+                      return _buildMeetingCard(
+                        event.title ?? "Untitled Meeting",
+                        "$start - $end",
+                        null, // Real live status calculation could go here
+                        surfaceColor,
+                        textPrimary,
+                        textSecondary,
+                        scribeTeal,
+                        isDark,
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -418,7 +497,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         children: [
           Text(
             title,
-            style: GoogleFonts.manrope(color: textPrimary, fontWeight: FontWeight.bold, fontSize: 16),
+            style: context.cardTitle,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -427,7 +506,14 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
             children: [
               Icon(Icons.schedule_rounded, color: textSecondary, size: 14),
               const SizedBox(width: 6),
-              Text(time, style: GoogleFonts.manrope(color: textSecondary, fontSize: 13, fontWeight: FontWeight.w500)),
+              Text(
+                time,
+                style: GoogleFonts.manrope(
+                  color: textSecondary,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 16),
@@ -440,35 +526,27 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     Container(
                       width: 8,
                       height: 8,
-                      decoration: const BoxDecoration(color: Color(0xFF1A8C7E), shape: BoxShape.circle),
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF1A8C7E),
+                        shape: BoxShape.circle,
+                      ),
                     ),
                     const SizedBox(width: 6),
                     Text(
                       status,
-                      style: GoogleFonts.manrope(color: const Color(0xFF1A8C7E), fontSize: 12, fontWeight: FontWeight.bold),
+                      style: GoogleFonts.manrope(
+                        color: const Color(0xFF1A8C7E),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
                 )
               else
                 const SizedBox.shrink(),
-              
+
               Row(
                 children: [
-                  if (status == null) // Show a details button if not live
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8.0),
-                      child: ElevatedButton(
-                        onPressed: () {},
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: teal.withValues(alpha: 0.1),
-                          foregroundColor: teal,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: Text('Details', style: GoogleFonts.manrope(fontWeight: FontWeight.bold, fontSize: 13)),
-                      ),
-                    ),
                   ElevatedButton(
                     onPressed: () {
                       AppShell.switchToTab(1);
@@ -477,10 +555,21 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       backgroundColor: teal,
                       foregroundColor: Colors.white,
                       elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 0),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 0,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    child: Text('Join', style: GoogleFonts.manrope(fontWeight: FontWeight.bold, fontSize: 13)),
+                    child: Text(
+                      'Join',
+                      style: GoogleFonts.manrope(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
                   ),
                 ],
               ),

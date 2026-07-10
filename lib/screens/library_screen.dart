@@ -4,10 +4,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../providers/meeting_provider.dart';
-import '../providers/settings_provider.dart';
 import '../models/meeting.dart';
 import '../widgets/meeting_list_tile.dart';
 import '../widgets/create_menu.dart';
+import '../widgets/profile_avatar.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -34,7 +34,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
               content: Text(message, style: GoogleFonts.manrope()),
               backgroundColor: context.appPrimary,
               behavior: SnackBarBehavior.floating,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
           );
         }
@@ -54,18 +56,22 @@ class _LibraryScreenState extends State<LibraryScreen> {
     var meetings = _searchQuery.isEmpty
         ? all
         : all
-            .where((m) =>
-                m.title.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-                (m.transcript?.toLowerCase().contains(_searchQuery.toLowerCase()) ?? false))
-            .toList();
+              .where(
+                (m) =>
+                    m.title.toLowerCase().contains(
+                      _searchQuery.toLowerCase(),
+                    ) ||
+                    (m.transcript?.toLowerCase().contains(
+                          _searchQuery.toLowerCase(),
+                        ) ??
+                        false),
+              )
+              .toList();
 
     // Then apply tab filter
     switch (_selectedTab) {
       case 'Favorites':
         meetings = meetings.where((m) => m.isFavorite).toList();
-        break;
-      case 'Shared':
-        meetings = []; // Shared feature not yet available
         break;
       case 'Folders':
         // Handled separately in the build method
@@ -81,7 +87,6 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Widget build(BuildContext context) {
     return Consumer<MeetingProvider>(
       builder: (context, provider, _) {
-        final settings = context.read<SettingsProvider>();
         final allMeetings = provider.meetings;
         final meetings = _filterMeetings(allMeetings);
 
@@ -91,30 +96,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
             backgroundColor: Colors.transparent,
             elevation: 0,
             scrolledUnderElevation: 0,
-            title: Text(
-              'Library',
-              style: TextStyle(
-                color: context.appTextPrimary,
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                fontFamily: AppTheme.fontFamily,
-              ),
-            ),
+            title: Text('Library', style: context.appBarTitleLarge),
             actions: [
               IconButton(
                 icon: Icon(Icons.add, color: context.appTextPrimary),
                 onPressed: () => showScribeCreateMenu(context),
               ),
-              Padding(
-                padding: const EdgeInsets.only(right: 16.0),
-                child: CircleAvatar(
-                  radius: 16,
-                  backgroundColor: context.appPrimary,
-                  child: Text(
-                    settings.userName.isNotEmpty ? settings.userName[0].toUpperCase() : 'S',
-                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
-                ),
+              const Padding(
+                padding: EdgeInsets.only(right: 16.0),
+                child: ProfileAvatar(),
               ),
             ],
           ),
@@ -122,7 +112,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
             children: [
               // Search Bar
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 child: AnimatedContainer(
                   duration: const Duration(milliseconds: 300),
                   curve: Curves.easeInOut,
@@ -134,15 +127,19 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   child: TextField(
                     controller: _searchController,
                     onChanged: (v) => setState(() => _searchQuery = v),
-                    style: TextStyle(color: context.appTextPrimary, fontFamily: AppTheme.fontFamily),
+                    style: TextStyle(color: context.appTextPrimary),
                     decoration: InputDecoration(
                       icon: Icon(Icons.search, color: context.appTextSecondary),
                       hintText: 'Search',
-                      hintStyle: TextStyle(color: context.appTextSecondary, fontFamily: AppTheme.fontFamily),
+                      hintStyle: TextStyle(color: context.appTextSecondary),
                       border: InputBorder.none,
                       suffixIcon: _searchQuery.isNotEmpty
                           ? IconButton(
-                              icon: Icon(Icons.close_rounded, color: context.appTextSecondary, size: 20),
+                              icon: Icon(
+                                Icons.close_rounded,
+                                color: context.appTextSecondary,
+                                size: 20,
+                              ),
                               onPressed: () {
                                 _searchController.clear();
                                 setState(() => _searchQuery = '');
@@ -164,9 +161,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     children: [
                       _buildTab('Recent', _selectedTab == 'Recent', context),
                       const SizedBox(width: 8),
-                      _buildTab('Shared', _selectedTab == 'Shared', context),
-                      const SizedBox(width: 8),
-                      _buildTab('Favorites', _selectedTab == 'Favorites', context),
+                      _buildTab(
+                        'Favorites',
+                        _selectedTab == 'Favorites',
+                        context,
+                      ),
                       const SizedBox(width: 8),
                       _buildTab('Folders', _selectedTab == 'Folders', context),
                     ],
@@ -178,43 +177,33 @@ class _LibraryScreenState extends State<LibraryScreen> {
               Expanded(
                 child: _selectedTab == 'Folders'
                     ? _buildFoldersView(context, provider, allMeetings)
-                    : _selectedTab == 'Shared'
-                        ? Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.share_outlined, size: 48, color: context.appTextTertiary),
-                                const SizedBox(height: 12),
-                                Text(
-                                  'Shared recordings will appear here',
-                                  style: TextStyle(color: context.appTextSecondary, fontFamily: AppTheme.fontFamily),
-                                ),
-                              ],
-                            ),
-                          )
-                        : meetings.isEmpty
-                            ? Center(
-                                child: Text(
-                                  _searchQuery.isNotEmpty
-                                      ? 'No matches found'
-                                      : _selectedTab == 'Favorites'
-                                          ? 'No favorites yet'
-                                          : 'Your Scribe Library is Empty',
-                                  style: TextStyle(color: context.appTextSecondary, fontFamily: AppTheme.fontFamily),
-                                ),
-                              )
-                            : ListView.builder(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                itemCount: meetings.length,
-                                itemBuilder: (context, index) {
-                                  final meeting = meetings[index];
-                                  return MeetingListTile(
-                                    meeting: meeting,
-                                    onFavoriteToggle: () => provider.toggleFavorite(meeting.id),
-                                    onDelete: () => provider.deleteMeeting(meeting.id),
-                                  );
-                                },
-                              ),
+                    : meetings.isEmpty
+                    ? Center(
+                        child: Text(
+                          _searchQuery.isNotEmpty
+                              ? 'No matches found'
+                              : _selectedTab == 'Favorites'
+                              ? 'No favorites yet'
+                              : 'Your Scribe Library is Empty',
+                          style: TextStyle(color: context.appTextSecondary),
+                        ),
+                      )
+                    : ListView.builder(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        itemCount: meetings.length,
+                        itemBuilder: (context, index) {
+                          final meeting = meetings[index];
+                          return MeetingListTile(
+                            meeting: meeting,
+                            onFavoriteToggle: () =>
+                                provider.toggleFavorite(meeting.id),
+                            onDelete: () => provider.deleteMeeting(meeting.id),
+                          );
+                        },
+                      ),
               ),
             ],
           ),
@@ -223,7 +212,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
     );
   }
 
-  Widget _buildFoldersView(BuildContext context, MeetingProvider provider, List<Meeting> allMeetings) {
+  Widget _buildFoldersView(
+    BuildContext context,
+    MeetingProvider provider,
+    List<Meeting> allMeetings,
+  ) {
     final folders = provider.folders;
     final unfoldered = allMeetings.where((m) => m.folderId == null).toList();
 
@@ -231,7 +224,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       return Center(
         child: Text(
           'No folders yet. Create one from the + menu.',
-          style: TextStyle(color: context.appTextSecondary, fontFamily: AppTheme.fontFamily),
+          style: TextStyle(color: context.appTextSecondary),
         ),
       );
     }
@@ -240,7 +233,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       children: [
         ...folders.map((folder) {
-          final folderMeetings = allMeetings.where((m) => m.folderId == folder.id).toList();
+          final folderMeetings = allMeetings
+              .where((m) => m.folderId == folder.id)
+              .toList();
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
             decoration: BoxDecoration(
@@ -249,23 +244,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
               boxShadow: context.appShadowSubtle,
             ),
             child: Theme(
-              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+              data: Theme.of(
+                context,
+              ).copyWith(dividerColor: Colors.transparent),
               child: ExpansionTile(
-                leading: Icon(Icons.folder_rounded, color: Color(folder.colorValue)),
-                title: Text(
-                  folder.name,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontFamily: AppTheme.fontFamily,
-                    color: context.appTextPrimary,
-                  ),
+                leading: Icon(
+                  Icons.folder_rounded,
+                  color: Color(folder.colorValue),
                 ),
+                title: Text(folder.name, style: context.cardTitle),
                 subtitle: Text(
                   '${folderMeetings.length} meeting${folderMeetings.length == 1 ? '' : 's'}',
                   style: TextStyle(
                     fontSize: 12,
                     color: context.appTextSecondary,
-                    fontFamily: AppTheme.fontFamily,
                   ),
                 ),
                 children: folderMeetings.isEmpty
@@ -274,17 +266,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
                           padding: const EdgeInsets.all(16),
                           child: Text(
                             'No meetings in this folder',
-                            style: TextStyle(color: context.appTextTertiary, fontFamily: AppTheme.fontFamily),
+                            style: TextStyle(color: context.appTextTertiary),
                           ),
                         ),
                       ]
                     : folderMeetings
-                        .map((m) => MeetingListTile(
+                          .map(
+                            (m) => MeetingListTile(
                               meeting: m,
-                              onFavoriteToggle: () => provider.toggleFavorite(m.id),
+                              onFavoriteToggle: () =>
+                                  provider.toggleFavorite(m.id),
                               onDelete: () => provider.deleteMeeting(m.id),
-                            ))
-                        .toList(),
+                            ),
+                          )
+                          .toList(),
               ),
             ),
           );
@@ -294,20 +289,18 @@ class _LibraryScreenState extends State<LibraryScreen> {
             padding: const EdgeInsets.only(top: 8, bottom: 12, left: 4),
             child: Text(
               'UNFILED',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 1.0,
+              style: context.sectionLabel.copyWith(
                 color: context.appTextTertiary,
-                fontFamily: AppTheme.fontFamily,
               ),
             ),
           ),
-          ...unfoldered.map((meeting) => MeetingListTile(
-                meeting: meeting,
-                onFavoriteToggle: () => provider.toggleFavorite(meeting.id),
-                onDelete: () => provider.deleteMeeting(meeting.id),
-              )),
+          ...unfoldered.map(
+            (meeting) => MeetingListTile(
+              meeting: meeting,
+              onFavoriteToggle: () => provider.toggleFavorite(meeting.id),
+              onDelete: () => provider.deleteMeeting(meeting.id),
+            ),
+          ),
         ],
       ],
     );
@@ -326,10 +319,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ),
         child: Text(
           title,
-          style: TextStyle(
+          style: GoogleFonts.manrope(
             color: isSelected ? Colors.white : context.appTextPrimary,
-            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-            fontFamily: AppTheme.fontFamily,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
             fontSize: 14,
           ),
         ),

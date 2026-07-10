@@ -14,17 +14,11 @@ class ProfileScreen extends StatefulWidget {
 class _ProfileScreenState extends State<ProfileScreen> {
   late TextEditingController _nameController;
   late TextEditingController _emailController;
-  
+
   // Profile Color selection state
   late int _selectedColorIndex;
-  
-  final List<Color> _swatches = [
-    const Color(0xFF1A8C7E), // Teal (Brand)
-    const Color(0xFF4A5568), // Slate
-    const Color(0xFF008953), // Moss (Darker for contrast)
-    const Color(0xFFC04000), // Terracotta
-    const Color(0xFFD97706), // Ochre
-  ];
+
+  static const _swatches = AppColors.profileSwatches;
 
   @override
   void initState() {
@@ -32,12 +26,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final settings = context.read<SettingsProvider>();
     _nameController = TextEditingController(text: settings.userName);
     _emailController = TextEditingController(text: settings.userEmail);
-    
-    // Attempt to match the existing user color, defaulting to teal (index 0)
-    _selectedColorIndex = _swatches.indexWhere((c) => c.toARGB32() == settings.userColorValue);
-    if (_selectedColorIndex == -1) {
-      _selectedColorIndex = 0; // Fallback
-    }
+
+    _selectedColorIndex = _swatches.indexOf(settings.userColor);
   }
 
   @override
@@ -71,28 +61,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back_ios_new_rounded, color: textPrimary, size: 20),
+          icon: Icon(
+            Icons.arrow_back_ios_new_rounded,
+            color: textPrimary,
+            size: 20,
+          ),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text(
-          'Edit Profile',
-          style: GoogleFonts.manrope(color: textPrimary, fontSize: 18, fontWeight: FontWeight.bold),
-        ),
+        title: Text('Edit Profile', style: context.appBarTitle),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.symmetric(horizontal: 24),
         child: Column(
           children: [
             const SizedBox(height: 32),
-            
+
             // 1. Central Avatar Section
             Center(
               child: Stack(
                 children: [
                   CircleAvatar(
                     radius: 60,
-                    backgroundColor: _swatches[_selectedColorIndex].withValues(alpha: 0.2),
-                    child: Icon(Icons.person, size: 60, color: _swatches[_selectedColorIndex]),
+                    backgroundColor: _swatches[_selectedColorIndex].withValues(
+                      alpha: 0.2,
+                    ),
+                    child: Icon(
+                      Icons.person,
+                      size: 60,
+                      color: _swatches[_selectedColorIndex],
+                    ),
                   ),
                   Positioned(
                     bottom: 0,
@@ -104,7 +101,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         shape: BoxShape.circle,
                         border: Border.all(color: bgColor, width: 3),
                       ),
-                      child: const Icon(Icons.camera_alt, color: Colors.white, size: 20),
+                      child: const Icon(
+                        Icons.camera_alt,
+                        color: Colors.white,
+                        size: 20,
+                      ),
                     ),
                   ),
                 ],
@@ -113,18 +114,29 @@ class _ProfileScreenState extends State<ProfileScreen> {
             const SizedBox(height: 48),
 
             // 2. Input Fields
-            _buildTextField('Name', _nameController, surfaceColor, borderColor, textPrimary, textSecondary),
+            _buildTextField(
+              'Name',
+              _nameController,
+              surfaceColor,
+              borderColor,
+              textPrimary,
+              textSecondary,
+            ),
             const SizedBox(height: 20),
-            _buildTextField('Email', _emailController, surfaceColor, borderColor, textPrimary, textSecondary),
+            _buildTextField(
+              'Email',
+              _emailController,
+              surfaceColor,
+              borderColor,
+              textPrimary,
+              textSecondary,
+            ),
             const SizedBox(height: 40),
 
             // 3. Profile Color Swatches
             Align(
               alignment: Alignment.centerLeft,
-              child: Text(
-                'PROFILE COLOR',
-                style: GoogleFonts.manrope(color: textSecondary, fontSize: 13, fontWeight: FontWeight.w700, letterSpacing: 1.2),
-              ),
+              child: Text('PROFILE COLOR', style: context.sectionLabel),
             ),
             const SizedBox(height: 16),
             Row(
@@ -139,7 +151,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       color: _swatches[index],
                       shape: BoxShape.circle,
                       border: Border.all(
-                        color: _selectedColorIndex == index ? scribeTeal : Colors.transparent,
+                        color: _selectedColorIndex == index
+                            ? scribeTeal
+                            : Colors.transparent,
                         width: 3,
                       ),
                     ),
@@ -161,10 +175,12 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: scribeTeal,
                   foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
                   elevation: 0,
                 ),
-                child: Text('Save Changes', style: GoogleFonts.manrope(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: Text('Save Changes', style: context.buttonLabel),
               ),
             ),
             const SizedBox(height: 40),
@@ -174,11 +190,25 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, Color bg, Color border, Color text, Color labelColor) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller,
+    Color bg,
+    Color border,
+    Color text,
+    Color labelColor,
+  ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: GoogleFonts.manrope(color: labelColor, fontSize: 14, fontWeight: FontWeight.w500)),
+        Text(
+          label,
+          style: GoogleFonts.manrope(
+            color: labelColor,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
         const SizedBox(height: 8),
         TextField(
           controller: controller,
@@ -186,7 +216,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
           decoration: InputDecoration(
             filled: true,
             fillColor: bg,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16,
+              vertical: 16,
+            ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide: BorderSide(color: border),

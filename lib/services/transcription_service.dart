@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http_parser/http_parser.dart';
+import '../models/language.dart';
 import '../models/meeting.dart';
 import 'package:http/http.dart' as http;
 
@@ -19,8 +20,9 @@ class TranscriptionResult {
 }
 
 class TranscriptionService {
-  static const String _groqUrl = 'https://api.groq.com/openai/v1/audio/transcriptions';
-  
+  static const String _groqUrl =
+      'https://api.groq.com/openai/v1/audio/transcriptions';
+
   // Local server constants (legacy, keeping for reference if user toggles cloud off)
   static const int _port = 8765;
   Process? _serverProcess;
@@ -41,7 +43,12 @@ class TranscriptionService {
     }
   }
 
-  Future<TranscriptionResult> _transcribeCloud(String audioPath, String apiKey, String? language, bool diarize) async {
+  Future<TranscriptionResult> _transcribeCloud(
+    String audioPath,
+    String apiKey,
+    String? language,
+    bool diarize,
+  ) async {
     final file = File(audioPath);
     if (!await file.exists()) {
       throw Exception('Audio file not found: $audioPath');
@@ -51,19 +58,26 @@ class TranscriptionService {
       ..headers['Authorization'] = 'Bearer $apiKey'
       ..fields['model'] = 'whisper-large-v3-turbo'
       ..fields['response_format'] = 'verbose_json'
-      ..files.add(await http.MultipartFile.fromPath(
-        'file',
-        audioPath,
-        contentType: MediaType('audio', 'wav'), // Fixed: record package uses wav
-      ));
+      ..files.add(
+        await http.MultipartFile.fromPath(
+          'file',
+          audioPath,
+          contentType: MediaType(
+            'audio',
+            'wav',
+          ), // Fixed: record package uses wav
+        ),
+      );
 
-    if (language != null && language != 'Auto-detect') {
-      request.fields['language'] = _mapLanguageToCode(language);
+    // Omitted entirely when null, which is how Whisper is asked to auto-detect.
+    final languageCode = AppLanguage.codeFor(language);
+    if (languageCode != null) {
+      request.fields['language'] = languageCode;
     }
 
     // Groq Whisper doesn't support speaker diarization natively yet.
     // We will use a basic time-based heuristic here until a better diarizer is added.
-    
+
     final response = await request.send();
     final responseBody = await response.stream.bytesToString();
 
@@ -75,12 +89,16 @@ class TranscriptionService {
     final fullText = data['text'] as String;
     final List<dynamic> segmentsData = data['segments'] ?? [];
 
-    var segments = segmentsData.map((s) => MeetingSegment(
-      start: (s['start'] as num).toDouble(),
-      end: (s['end'] as num).toDouble(),
-      text: s['text'] as String,
-      speaker: null, // Cloud Whisper doesn't diarize yet
-    )).toList();
+    var segments = segmentsData
+        .map(
+          (s) => MeetingSegment(
+            start: (s['start'] as num).toDouble(),
+            end: (s['end'] as num).toDouble(),
+            text: s['text'] as String,
+            speaker: null, // Cloud Whisper doesn't diarize yet
+          ),
+        )
+        .toList();
 
     if (diarize && segments.isNotEmpty) {
       try {
@@ -98,17 +116,23 @@ class TranscriptionService {
     );
   }
 
-  Future<TranscriptionResult> _transcribeLocal(String audioPath, String? language, bool diarize) async {
+  Future<TranscriptionResult> _transcribeLocal(
+    String audioPath,
+    String? language,
+    bool diarize,
+  ) async {
     // Legacy local server implementation
-    final response = await http.post(
-      Uri.parse('http://127.0.0.1:$_port/transcribe'),
-      headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'audio_path': audioPath,
-        'language': language,
-        'diarize': diarize,
-      }),
-    ).timeout(const Duration(minutes: 5));
+    final response = await http
+        .post(
+          Uri.parse('http://127.0.0.1:$_port/transcribe'),
+          headers: {'Content-Type': 'application/json'},
+          body: jsonEncode({
+            'audio_path': audioPath,
+            'language': language,
+            'diarize': diarize,
+          }),
+        )
+        .timeout(const Duration(minutes: 5));
 
     if (response.statusCode != 200) {
       throw Exception('Local server error: ${response.statusCode}');
@@ -117,20 +141,26 @@ class TranscriptionService {
     final data = jsonDecode(response.body);
     return TranscriptionResult(
       fullText: data['full_text'],
-      segments: (data['segments'] as List).map((s) => MeetingSegment.fromJson(s)).toList(),
+      segments: (data['segments'] as List)
+          .map((s) => MeetingSegment.fromJson(s))
+          .toList(),
       language: data['language'],
       duration: data['duration'],
     );
   }
 
-  Future<List<MeetingSegment>> _diarizeCloud(List<MeetingSegment> originalSegments, String apiKey) async {
+  Future<List<MeetingSegment>> _diarizeCloud(
+    List<MeetingSegment> originalSegments,
+    String apiKey,
+  ) async {
     final transcriptText = originalSegments
         .asMap()
         .entries
         .map((e) => '[${e.key}] ${e.value.text}')
         .join('\n');
 
-    final prompt = '''You are a professional audio diarization assistant. Analyze the following transcript where each line starts with an index roughly corresponding to an audio segment. Infer the conversational flow and identify the speaker for each segment (e.g. "Speaker A", "Speaker B", etc.).
+    final prompt =
+        '''You are a professional audio diarization assistant. Analyze the following transcript where each line starts with an index roughly corresponding to an audio segment. Infer the conversational flow and identify the speaker for each segment (e.g. "Speaker A", "Speaker B", etc.).
 Respond ONLY in valid JSON conforming to this structure:
 {
   "diarization": [
@@ -142,30 +172,36 @@ Respond ONLY in valid JSON conforming to this structure:
 TRANSCRIPT:
 $transcriptText''';
 
-    final response = await http.post(
-      Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $apiKey',
-      },
-      body: jsonEncode({
-        'model': 'llama-3.3-70b-versatile',
-        'messages': [
-          {'role': 'system', 'content': 'You are a professional audio diarization assistant that responds ONLY in valid JSON.'},
-          {'role': 'user', 'content': prompt}
-        ],
-        'response_format': {'type': 'json_object'},
-      }),
-    ).timeout(const Duration(minutes: 1));
+    final response = await http
+        .post(
+          Uri.parse('https://api.groq.com/openai/v1/chat/completions'),
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $apiKey',
+          },
+          body: jsonEncode({
+            'model': 'llama-3.3-70b-versatile',
+            'messages': [
+              {
+                'role': 'system',
+                'content':
+                    'You are a professional audio diarization assistant that responds ONLY in valid JSON.',
+              },
+              {'role': 'user', 'content': prompt},
+            ],
+            'response_format': {'type': 'json_object'},
+          }),
+        )
+        .timeout(const Duration(minutes: 1));
 
     if (response.statusCode != 200) {
       return originalSegments;
     }
 
-    final data = jsonDecode(response.body);
+    final data = jsonDecode(utf8.decode(response.bodyBytes));
     final content = data['choices'][0]['message']['content'] as String;
     final parsed = jsonDecode(content);
-    
+
     final diarizationList = parsed['diarization'] as List<dynamic>?;
     if (diarizationList == null) return originalSegments;
 
@@ -188,16 +224,6 @@ $transcriptText''';
         speaker: speakerMap[e.key] ?? e.value.speaker,
       );
     }).toList();
-  }
-
-  String _mapLanguageToCode(String language) {
-    switch (language) {
-      case 'English': return 'en';
-      case 'Spanish': return 'es';
-      case 'French': return 'fr';
-      case 'German': return 'de';
-      default: return 'en';
-    }
   }
 
   // Lifecycle methods for local server (optional now)

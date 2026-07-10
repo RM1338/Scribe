@@ -13,7 +13,7 @@ import 'detail_screen.dart';
 
 class UploadProgressScreen extends StatefulWidget {
   final PlatformFile file;
-  
+
   const UploadProgressScreen({super.key, required this.file});
 
   @override
@@ -37,7 +37,20 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
   }
 
   String _monthName(int month) {
-    const m = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const m = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return m[month - 1];
   }
 
@@ -53,7 +66,10 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Name your upload',
-          style: GoogleFonts.manrope(fontWeight: FontWeight.w700, color: context.appTextPrimary),
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w700,
+            color: context.appTextPrimary,
+          ),
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -61,7 +77,10 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
           children: [
             Text(
               'Give your uploaded recording a name.',
-              style: GoogleFonts.manrope(fontSize: 14, color: context.appTextSecondary),
+              style: GoogleFonts.manrope(
+                fontSize: 14,
+                color: context.appTextSecondary,
+              ),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -91,9 +110,14 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
             style: ElevatedButton.styleFrom(
               backgroundColor: context.appPrimary,
               foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
             ),
-            child: Text('Done', style: GoogleFonts.manrope(fontWeight: FontWeight.w600)),
+            child: Text(
+              'Done',
+              style: GoogleFonts.manrope(fontWeight: FontWeight.w600),
+            ),
           ),
         ],
       ),
@@ -102,7 +126,7 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
 
   Future<void> _processUploadedFile(String audioPath) async {
     if (_isCancelled || !mounted) return;
-    
+
     // Get actual duration using AudioPlayer without playing it
     Duration? fileDuration;
     try {
@@ -119,12 +143,12 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
 
     // Show naming dialog before saving
     final title = await _showNamingDialog(context) ?? 'My Upload';
-    
+
     if (!mounted) return;
-    
+
     final provider = context.read<MeetingProvider>();
     final meeting = await provider.createMeetingFromRecording(
-      audioPath, 
+      audioPath,
       title: title,
       duration: fileDuration,
     );
@@ -144,7 +168,7 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
       if (widget.file.path == null) {
         throw Exception("File path is null");
       }
-      
+
       final sourceFile = File(widget.file.path!);
       if (!await sourceFile.exists()) {
         throw Exception("Source file does not exist");
@@ -159,7 +183,8 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
       File destFile = File(destPath);
       int counter = 1;
       while (await destFile.exists()) {
-        final filename = '${p.basenameWithoutExtension(sourceFile.path)}_$counter${p.extension(sourceFile.path)}';
+        final filename =
+            '${p.basenameWithoutExtension(sourceFile.path)}_$counter${p.extension(sourceFile.path)}';
         destPath = p.join(destDir.path, filename);
         destFile = File(destPath);
         counter++;
@@ -171,10 +196,10 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
       _readStream.listen(
         (chunk) {
           if (_isCancelled) return;
-          
+
           _writeSink.add(chunk);
           _bytesTransferred += chunk.length;
-          
+
           if (mounted) {
             setState(() {
               _progress = _bytesTransferred / _totalBytes;
@@ -184,7 +209,7 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
         onDone: () async {
           if (_isCancelled) return;
           await _writeSink.close();
-          
+
           if (mounted) {
             setState(() {
               _isUploading = false;
@@ -224,14 +249,14 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
     if (_startTime == null || _bytesTransferred == 0 || _totalBytes == 0) {
       return 'Calculating...';
     }
-    
+
     final elapsedMs = DateTime.now().difference(_startTime!).inMilliseconds;
     if (elapsedMs == 0) return 'Calculating...';
-    
+
     final bytesPerMs = _bytesTransferred / elapsedMs;
     final remainingBytes = _totalBytes - _bytesTransferred;
     final remainingMs = remainingBytes / bytesPerMs;
-    
+
     final remainingSecs = (remainingMs / 1000).ceil();
     if (remainingSecs < 60) {
       return '${remainingSecs}s';
@@ -249,8 +274,12 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
     final Color cardColor = context.appSurface;
     final Color textPrimary = context.appTextPrimary;
     final Color textSecondary = context.appTextSecondary;
-    final Color trackColor = isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.05);
-    final Color cancelButtonBg = isDark ? const Color(0xFF1E1E1E) : Colors.black.withValues(alpha: 0.04);
+    final Color trackColor = isDark
+        ? Colors.white.withValues(alpha: 0.05)
+        : Colors.black.withValues(alpha: 0.05);
+    final Color cancelButtonBg = isDark
+        ? const Color(0xFF1E1E1E)
+        : Colors.black.withValues(alpha: 0.04);
 
     // Constant Accents
     final Color scribeTeal = context.appPrimary;
@@ -265,30 +294,29 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
         leading: Padding(
           padding: const EdgeInsets.all(8.0),
           child: CircleAvatar(
-            backgroundColor: isDark ? Colors.white10 : Colors.black.withValues(alpha: 0.05),
+            backgroundColor: isDark
+                ? Colors.white10
+                : Colors.black.withValues(alpha: 0.05),
             child: IconButton(
-              icon: Icon(Icons.arrow_back_rounded, color: textPrimary, size: 20),
+              icon: Icon(
+                Icons.arrow_back_rounded,
+                color: textPrimary,
+                size: 20,
+              ),
               onPressed: () {
                 _cancelUpload();
               },
             ),
           ),
         ),
-        title: Text(
-          'Upload Progress',
-          style: GoogleFonts.manrope(
-            color: textPrimary,
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-          ),
-        ),
+        title: Text('Upload Progress', style: context.appBarTitle),
       ),
       body: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 24.0),
         child: Column(
           children: [
             const Spacer(flex: 2),
-            
+
             // 1. Central Status Card
             Container(
               width: double.infinity,
@@ -315,29 +343,31 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
                       color: scribeTeal.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(20),
                     ),
-                    child: Icon(Icons.movie_outlined, color: scribeTeal, size: 36),
+                    child: Icon(
+                      Icons.movie_outlined,
+                      color: scribeTeal,
+                      size: 36,
+                    ),
                   ),
                   const SizedBox(height: 24),
-                  
+
                   // File Information
                   Text(
                     widget.file.name,
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.manrope(
-                      color: textPrimary,
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.5,
-                    ),
+                    style: context.sheetTitle,
                   ),
                   const SizedBox(height: 8),
                   Text(
                     '${_formatBytes(_totalBytes)} • ${_isUploading ? 'Processing...' : 'Done'}',
-                    style: GoogleFonts.manrope(color: textSecondary, fontSize: 14),
+                    style: GoogleFonts.manrope(
+                      color: textSecondary,
+                      fontSize: 14,
+                    ),
                   ),
-                  
+
                   const SizedBox(height: 48),
-                  
+
                   // Progress Percentage Header
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -345,12 +375,7 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
                     children: [
                       Text(
                         _isUploading ? 'UPLOADING' : 'COMPLETE',
-                        style: GoogleFonts.manrope(
-                          color: textSecondary,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.5,
-                        ),
+                        style: context.sectionLabel,
                       ),
                       Text(
                         '${(_progress * 100).toInt()}%',
@@ -363,7 +388,7 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  
+
                   // Linear Progress Bar
                   ClipRRect(
                     borderRadius: BorderRadius.circular(8),
@@ -375,25 +400,34 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  
+
                   // Time Estimation
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.timer_outlined, color: textSecondary, size: 16),
+                      Icon(
+                        Icons.timer_outlined,
+                        color: textSecondary,
+                        size: 16,
+                      ),
                       const SizedBox(width: 8),
                       Text(
-                        _isUploading ? 'Estimated time: ${_getEstimatedTimeLeft()}' : 'Finished',
-                        style: GoogleFonts.manrope(color: textSecondary, fontSize: 14),
+                        _isUploading
+                            ? 'Estimated time: ${_getEstimatedTimeLeft()}'
+                            : 'Finished',
+                        style: GoogleFonts.manrope(
+                          color: textSecondary,
+                          fontSize: 14,
+                        ),
                       ),
                     ],
                   ),
                 ],
               ),
             ),
-            
+
             const Spacer(flex: 3),
-            
+
             // 2. Cancel Action Button
             SafeArea(
               top: false,
@@ -408,14 +442,14 @@ class _UploadProgressScreenState extends State<UploadProgressScreen> {
                     },
                     style: TextButton.styleFrom(
                       backgroundColor: cancelButtonBg,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                     ),
                     child: Text(
                       'Cancel Upload',
-                      style: GoogleFonts.manrope(
+                      style: context.buttonLabel.copyWith(
                         color: isDark ? Colors.white70 : Colors.black54,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
                       ),
                     ),
                   ),
