@@ -20,6 +20,7 @@ class StorageService {
   static const _filename = 'meetings.json';
   static const _foldersFilename = 'folders.json';
   static const _recentSearchesFilename = 'recent_searches.json';
+  static const _scheduledFilename = 'scheduled_meetings.json';
   static const _recordingsDirname = 'recordings';
 
   final String? userId;
@@ -125,6 +126,27 @@ class StorageService {
       await file.writeAsString(jsonEncode(folders));
     } catch (e) {
       debugPrint('StorageService.saveFolders error: $e');
+    }
+  }
+
+  Future<List<dynamic>> loadScheduledMeetings() async {
+    try {
+      final file = await _getFile(_scheduledFilename);
+      if (!await file.exists()) return [];
+      final content = await file.readAsString();
+      return jsonDecode(content) as List<dynamic>;
+    } catch (e) {
+      debugPrint('StorageService.loadScheduledMeetings error: $e');
+      return [];
+    }
+  }
+
+  Future<void> saveScheduledMeetings(List<dynamic> scheduled) async {
+    try {
+      final file = await _getFile(_scheduledFilename);
+      await file.writeAsString(jsonEncode(scheduled));
+    } catch (e) {
+      debugPrint('StorageService.saveScheduledMeetings error: $e');
     }
   }
 

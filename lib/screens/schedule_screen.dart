@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:device_calendar/device_calendar.dart';
+import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 import '../theme/app_theme.dart';
-import '../services/calendar_service.dart';
+import '../providers/meeting_provider.dart';
+import '../models/scheduled_meeting.dart';
+import '../services/notification_service.dart';
+import '../navigation/app_shell.dart';
+import 'record_screen.dart';
 import '../widgets/profile_avatar.dart';
 import '../widgets/show_scribe_date_picker.dart';
-import 'package:intl/intl.dart';
-import '../navigation/app_shell.dart';
 
 class ScheduleScreen extends StatefulWidget {
   const ScheduleScreen({super.key});
@@ -16,14 +19,10 @@ class ScheduleScreen extends StatefulWidget {
 }
 
 class _ScheduleScreenState extends State<ScheduleScreen> {
-  final CalendarService _calendarService = CalendarService();
   int _selectedDateIndex = 0;
   late List<Map<String, dynamic>> _dates;
   late DateTime _now;
   DateTime _currentWeekStart = DateTime.now();
-
-  List<Event> _events = [];
-  bool _isLoading = true;
 
   @override
   void initState() {
@@ -35,7 +34,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       (d) => (d['fullDate'] as DateTime).day == _now.day,
     );
     if (_selectedDateIndex == -1) _selectedDateIndex = 0;
-    _fetchEvents();
   }
 
   void _generateWeek() {
@@ -49,17 +47,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     });
   }
 
-  Future<void> _fetchEvents() async {
-    setState(() => _isLoading = true);
-    final selectedDate = _dates[_selectedDateIndex]['fullDate'] as DateTime;
-    final events = await _calendarService.getEventsForDate(selectedDate);
-    if (mounted) {
-      setState(() {
-        _events = events;
-        _isLoading = false;
-      });
-    }
-  }
+  DateTime get _selectedDate => _dates[_selectedDateIndex]['fullDate'] as DateTime;
 
   String _getMonthName(int month) {
     return [
@@ -79,11 +67,9 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Future<void> _openDatePicker() async {
-    final DateTime currentSelected =
-        _dates[_selectedDateIndex]['fullDate'] as DateTime;
     final DateTime? pickedDate = await showScribeDatePicker(
       context,
-      currentSelected,
+      _selectedDate,
     );
     if (pickedDate != null && mounted) {
       setState(() {
@@ -93,125 +79,346 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         _generateWeek();
         _selectedDateIndex = pickedDate.weekday - 1;
       });
-      _fetchEvents();
       _scheduleMeeting(preSelectedDate: pickedDate);
     }
   }
 
+  void _showScheduleError(String message) {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message, style: GoogleFonts.manrope())),
+    );
+  }
+
   Future<void> _scheduleMeeting({DateTime? preSelectedDate}) async {
     final titleController = TextEditingController(text: "New Scribe Meeting");
-    final timeController = TextEditingController(text: "10:00");
+    final descriptionController = TextEditingController();
+    TimeOfDay startClock = const TimeOfDay(hour: 10, minute: 0);
+    TimeOfDay endClock = const TimeOfDay(hour: 11, minute: 0);
 
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color textPrimary = Theme.of(context).colorScheme.onSurface;
+    final Color textPrimary = context.appTextPrimary;
+    final Color scribeTeal = context.appPrimary;
 
     final result = await showDialog<bool>(
       context: context,
-      builder: (context) {
-        return AlertDialog(
-          backgroundColor: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-          title: Text(
-            "Schedule Meeting",
-            style: GoogleFonts.manrope(color: textPrimary),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: titleController,
-                style: TextStyle(color: textPrimary),
-                decoration: InputDecoration(
-                  labelText: "Title",
-                  labelStyle: TextStyle(
-                    color: textPrimary.withValues(alpha: 0.6),
+      builder: (dialogContext) {
+        return StatefulBuilder(
+          builder: (dialogContext, setDialogState) {
+            // A tappable clock row (alarm-clock style) for a labelled time.
+            Widget timeRow(
+              String label,
+              TimeOfDay value,
+              ValueChanged<TimeOfDay> onPicked,
+            ) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: context.sectionLabel.copyWith(
+                      color: context.appTextSecondary,
+                    ),
                   ),
+                  const SizedBox(height: 8),
+                  InkWell(
+                    borderRadius: BorderRadius.circular(16),
+                    onTap: () async {
+                      final picked = await showTimePicker(
+                        context: dialogContext,
+                        initialTime: value,
+                      );
+                      if (picked != null) onPicked(picked);
+                    },
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 16,
+                      ),
+                      decoration: BoxDecoration(
+                        color: context.appSurfaceVariant,
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            Icons.access_time_rounded,
+                            color: scribeTeal,
+                            size: 22,
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            value.format(dialogContext),
+                            style: GoogleFonts.manrope(
+                              color: textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const Spacer(),
+                          Icon(
+                            Icons.edit_outlined,
+                            color: context.appTextSecondary,
+                            size: 18,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            return AlertDialog(
+              backgroundColor: context.appSurface,
+              title: Text(
+                "Schedule Meeting",
+                style: GoogleFonts.manrope(
+                  color: textPrimary,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-              TextField(
-                controller: timeController,
-                style: TextStyle(color: textPrimary),
-                decoration: InputDecoration(
-                  labelText: "Time (HH:MM)",
-                  labelStyle: TextStyle(
-                    color: textPrimary.withValues(alpha: 0.6),
+              content: SingleChildScrollView(
+                child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: titleController,
+                    style: TextStyle(color: textPrimary),
+                    decoration: InputDecoration(
+                      labelText: "Title",
+                      labelStyle: TextStyle(
+                        color: textPrimary.withValues(alpha: 0.6),
+                      ),
+                    ),
                   ),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: descriptionController,
+                    style: TextStyle(color: textPrimary),
+                    minLines: 1,
+                    maxLines: 3,
+                    textCapitalization: TextCapitalization.sentences,
+                    decoration: InputDecoration(
+                      labelText: "Description (optional)",
+                      labelStyle: TextStyle(
+                        color: textPrimary.withValues(alpha: 0.6),
+                      ),
+                      hintText: "Agenda, meeting link, attendees…",
+                      hintStyle: TextStyle(
+                        color: textPrimary.withValues(alpha: 0.35),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  timeRow(
+                    'STARTS',
+                    startClock,
+                    (t) => setDialogState(() => startClock = t),
+                  ),
+                  const SizedBox(height: 16),
+                  timeRow(
+                    'ENDS',
+                    endClock,
+                    (t) => setDialogState(() => endClock = t),
+                  ),
+                ],
                 ),
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text("Cancel"),
-            ),
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text("Schedule"),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext, false),
+                  child: Text(
+                    "Cancel",
+                    style: GoogleFonts.manrope(color: context.appTextSecondary),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(dialogContext, true),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: scribeTeal,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                  ),
+                  child: const Text("Schedule"),
+                ),
+              ],
+            );
+          },
         );
       },
     );
 
-    if (result == true) {
-      try {
-        final timeParts = timeController.text.split(":");
-        if (timeParts.length == 2) {
-          final int hour = int.parse(timeParts[0]);
-          final int minute = int.parse(timeParts[1]);
-          final selectedDate =
-              preSelectedDate ??
-              _dates[_selectedDateIndex]['fullDate'] as DateTime;
+    if (result != true) return;
 
-          final startTime = DateTime(
-            selectedDate.year,
-            selectedDate.month,
-            selectedDate.day,
-            hour,
-            minute,
-          );
-          final endTime = startTime.add(
-            const Duration(hours: 1),
-          ); // Default 1 hour meeting
+    final date = preSelectedDate ?? _selectedDate;
+    final startTime = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      startClock.hour,
+      startClock.minute,
+    );
+    final endTime = DateTime(
+      date.year,
+      date.month,
+      date.day,
+      endClock.hour,
+      endClock.minute,
+    );
 
-          final success = await _calendarService.addEvent(
-            titleController.text,
-            startTime,
-            endTime,
-          );
-          if (success && mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Meeting scheduled!',
-                  style: GoogleFonts.manrope(),
-                ),
-              ),
-            );
-            _fetchEvents(); // Refresh events
-          } else if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Failed to schedule meeting.',
-                  style: GoogleFonts.manrope(),
-                ),
-              ),
-            );
-          }
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Invalid time format.',
-                style: GoogleFonts.manrope(),
-              ),
+    if (startTime.isBefore(DateTime.now())) {
+      _showScheduleError("Can't schedule a meeting in the past.");
+      return;
+    }
+    if (!endTime.isAfter(startTime)) {
+      _showScheduleError("The end time must be after the start time.");
+      return;
+    }
+
+    final title = titleController.text.trim().isEmpty
+        ? 'New Scribe Meeting'
+        : titleController.text.trim();
+    final description = descriptionController.text.trim().isEmpty
+        ? null
+        : descriptionController.text.trim();
+    final durationMinutes = endTime.difference(startTime).inMinutes;
+
+    if (!mounted) return;
+    final provider = context.read<MeetingProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+
+    // Ask for notification permission so the reminder can actually fire.
+    await NotificationService.requestPermissions();
+    await provider.addScheduledMeeting(
+      title,
+      startTime,
+      durationMinutes: durationMinutes,
+      description: description,
+    );
+    if (!mounted) return;
+    setState(() {}); // reflect the new meeting in the list
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          'Meeting scheduled! You\'ll get a reminder 5 minutes before.',
+          style: GoogleFonts.manrope(),
+        ),
+      ),
+    );
+  }
+
+  /// "Join now": confirm, then jump to the Record tab and start a recording
+  /// pre-named after the meeting. Won't interrupt a recording already running.
+  Future<void> _joinNow(ScheduledMeeting meeting) async {
+    final provider = context.read<MeetingProvider>();
+    if (provider.recordingState != RecordingState.idle) {
+      _showScheduleError('A recording is already in progress.');
+      return;
+    }
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: context.appSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Start recording now?',
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w700,
+            color: context.appTextPrimary,
+          ),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Scribe will begin recording "${meeting.title}".',
+              style: GoogleFonts.manrope(color: context.appTextSecondary),
             ),
-          );
-        }
-      }
+            if (meeting.description != null) ...[
+              const SizedBox(height: 12),
+              Text(
+                meeting.description!,
+                style: GoogleFonts.manrope(
+                  color: context.appTextTertiary,
+                  fontSize: 13,
+                ),
+              ),
+            ],
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.manrope(color: context.appTextSecondary),
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: context.appPrimary,
+              foregroundColor: Colors.white,
+              elevation: 0,
+            ),
+            icon: const Icon(Icons.mic_rounded, size: 18),
+            label: Text(
+              'Start recording',
+              style: GoogleFonts.manrope(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true || !mounted) return;
+
+    // Switch to the Record tab, then kick off recording with the meeting name.
+    AppShell.switchToTab(1);
+    final started = RecordScreen.startWithTitle(meeting.title);
+    if (!started) _showScheduleError('A recording is already in progress.');
+  }
+
+  Future<void> _confirmDelete(ScheduledMeeting meeting) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: context.appSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Delete scheduled meeting?',
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w700,
+            color: context.appTextPrimary,
+          ),
+        ),
+        content: Text(
+          '"${meeting.title}" will be removed from your schedule.',
+          style: GoogleFonts.manrope(color: context.appTextSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: GoogleFonts.manrope()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.manrope(fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true && mounted) {
+      await context.read<MeetingProvider>().deleteScheduledMeeting(meeting.id);
+      if (mounted) setState(() {});
     }
   }
 
@@ -224,11 +431,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
     final Color textSecondary = context.appTextSecondary;
     final Color scribeTeal = context.appPrimary;
 
-    final currentMonth = _getMonthName(
-      (_dates[_selectedDateIndex]['fullDate'] as DateTime).month,
-    );
-    final currentYear =
-        (_dates[_selectedDateIndex]['fullDate'] as DateTime).year;
+    final provider = context.watch<MeetingProvider>();
+    final meetings = provider.scheduledMeetingsOn(_selectedDate);
+
+    final currentMonth = _getMonthName(_selectedDate.month);
+    final currentYear = _selectedDate.year;
 
     return Scaffold(
       backgroundColor: Colors.transparent,
@@ -240,7 +447,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
         actions: [
           IconButton(
             icon: Icon(Icons.add_rounded, color: textPrimary),
-            onPressed: _scheduleMeeting,
+            onPressed: () => _scheduleMeeting(),
           ),
           const Padding(
             padding: EdgeInsets.only(right: 16.0),
@@ -283,7 +490,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             );
                             _generateWeek();
                           });
-                          _fetchEvents();
                         },
                         child: Container(
                           padding: const EdgeInsets.all(4),
@@ -309,7 +515,6 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                             );
                             _generateWeek();
                           });
-                          _fetchEvents();
                         },
                         child: Container(
                           padding: const EdgeInsets.all(4),
@@ -351,10 +556,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     (_dates[index]['fullDate'] as DateTime).year == _now.year;
 
                 return GestureDetector(
-                  onTap: () {
-                    setState(() => _selectedDateIndex = index);
-                    _fetchEvents();
-                  },
+                  onTap: () => setState(() => _selectedDateIndex = index),
                   child: Container(
                     width: 60,
                     margin: const EdgeInsets.symmetric(horizontal: 4),
@@ -404,7 +606,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text('Upcoming Meetings', style: context.sectionTitle),
-                if (!_isLoading && _events.isNotEmpty)
+                if (meetings.isNotEmpty)
                   Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 10,
@@ -415,7 +617,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
-                      '${_events.length} Today',
+                      '${meetings.length} scheduled',
                       style: GoogleFonts.manrope(
                         color: scribeTeal,
                         fontSize: 12,
@@ -429,9 +631,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
 
           // 3. Meeting List
           Expanded(
-            child: _isLoading
-                ? Center(child: CircularProgressIndicator(color: scribeTeal))
-                : _events.isEmpty
+            child: meetings.isEmpty
                 ? Center(
                     child: Text(
                       "No meetings scheduled.",
@@ -440,24 +640,17 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                   )
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemCount: _events.length,
+                    itemCount: meetings.length,
                     itemBuilder: (context, index) {
-                      final event = _events[index];
-                      final start = event.start != null
-                          ? DateFormat.jm().format(event.start!)
-                          : "?";
-                      final end = event.end != null
-                          ? DateFormat.jm().format(event.end!)
-                          : "?";
-
+                      final m = meetings[index];
+                      final time =
+                          '${DateFormat.jm().format(m.start)} - ${DateFormat.jm().format(m.end)}';
                       return _buildMeetingCard(
-                        event.title ?? "Untitled Meeting",
-                        "$start - $end",
-                        null, // Real live status calculation could go here
+                        m,
+                        time,
                         surfaceColor,
                         textPrimary,
                         textSecondary,
-                        scribeTeal,
                         isDark,
                       );
                     },
@@ -469,13 +662,11 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
   }
 
   Widget _buildMeetingCard(
-    String title,
+    ScheduledMeeting meeting,
     String time,
-    String? status,
     Color surface,
     Color textPrimary,
     Color textSecondary,
-    Color teal,
     bool isDark,
   ) {
     return Container(
@@ -495,85 +686,84 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            title,
-            style: context.cardTitle,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          const SizedBox(height: 8),
           Row(
             children: [
-              Icon(Icons.schedule_rounded, color: textSecondary, size: 14),
-              const SizedBox(width: 6),
-              Text(
-                time,
-                style: GoogleFonts.manrope(
-                  color: textSecondary,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              if (status != null)
-                Row(
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Container(
-                      width: 8,
-                      height: 8,
-                      decoration: BoxDecoration(
-                        color: context.appPrimary,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
                     Text(
-                      status,
-                      style: GoogleFonts.manrope(
-                        color: context.appPrimary,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
+                      meeting.title,
+                      style: context.cardTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.schedule_rounded,
+                          color: textSecondary,
+                          size: 14,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          time,
+                          style: GoogleFonts.manrope(
+                            color: textSecondary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
-                )
-              else
-                const SizedBox.shrink(),
-
-              Row(
-                children: [
-                  ElevatedButton(
-                    onPressed: () {
-                      AppShell.switchToTab(1);
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: teal,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 0,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: Text(
-                      'Join',
-                      style: GoogleFonts.manrope(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 13,
-                      ),
-                    ),
-                  ),
-                ],
+                ),
+              ),
+              IconButton(
+                icon: Icon(
+                  Icons.delete_outline_rounded,
+                  color: textSecondary,
+                  size: 20,
+                ),
+                tooltip: 'Delete',
+                onPressed: () => _confirmDelete(meeting),
               ),
             ],
+          ),
+          if (meeting.description != null) ...[
+            const SizedBox(height: 8),
+            Text(
+              meeting.description!,
+              style: GoogleFonts.manrope(
+                color: textSecondary,
+                fontSize: 13,
+                height: 1.4,
+              ),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: () => _joinNow(meeting),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: context.appPrimary,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              icon: const Icon(Icons.mic_rounded, size: 18),
+              label: Text(
+                'Join now',
+                style: GoogleFonts.manrope(fontWeight: FontWeight.w600),
+              ),
+            ),
           ),
         ],
       ),

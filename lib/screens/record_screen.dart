@@ -9,6 +9,18 @@ import 'detail_screen.dart';
 class RecordScreen extends StatefulWidget {
   const RecordScreen({super.key});
 
+  // Lets other tabs (e.g. Schedule's "Join now") begin a recording that is
+  // pre-named after the meeting, without the user retyping the title.
+  // ignore: library_private_types_in_public_api
+  static final GlobalKey<_RecordScreenState> recordKey =
+      GlobalKey<_RecordScreenState>();
+
+  /// Starts a recording titled [title] if the recorder is idle. Returns false
+  /// if a recording is already in progress (nothing is clobbered).
+  static bool startWithTitle(String title) {
+    return recordKey.currentState?._startWithTitle(title) ?? false;
+  }
+
   @override
   State<RecordScreen> createState() => _RecordScreenState();
 }
@@ -63,6 +75,17 @@ class _RecordScreenState extends State<RecordScreen>
       final s = d.inSeconds.remainder(60).toString().padLeft(2, '0');
       return '$m:$s';
     }
+  }
+
+  /// Begins recording with a caller-supplied title. Used by the Schedule tab's
+  /// "Join now" flow. No-op (returns false) if a recording is already active.
+  bool _startWithTitle(String title) {
+    final provider = Provider.of<MeetingProvider>(context, listen: false);
+    if (provider.recordingState != RecordingState.idle) return false;
+    final trimmed = title.trim();
+    setState(() => _pendingTitle = trimmed.isEmpty ? null : trimmed);
+    provider.startRecording();
+    return true;
   }
 
   Future<void> _handleStop(

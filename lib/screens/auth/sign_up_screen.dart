@@ -20,6 +20,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   final _passwordController = TextEditingController();
   final _confirmController = TextEditingController();
   bool _obscurePassword = true;
+  bool _obscureConfirm = true;
   String? _localError;
 
   @override
@@ -135,7 +136,18 @@ class _SignUpScreenState extends State<SignUpScreen> {
               controller: _confirmController,
               hintText: 'Confirm password',
               icon: Icons.lock_outline_rounded,
-              obscureText: _obscurePassword,
+              obscureText: _obscureConfirm,
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscureConfirm
+                      ? Icons.visibility_off_outlined
+                      : Icons.visibility_outlined,
+                  color: context.appTextSecondary,
+                  size: 20,
+                ),
+                onPressed: () =>
+                    setState(() => _obscureConfirm = !_obscureConfirm),
+              ),
             ),
             if (error != null) ...[
               const SizedBox(height: 14),

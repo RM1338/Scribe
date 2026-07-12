@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../providers/settings_provider.dart';
+import '../providers/auth_provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -39,12 +40,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
-  void _saveChanges() {
+  Future<void> _saveChanges() async {
     final settings = context.read<SettingsProvider>();
-    settings.userName = _nameController.text.trim();
-    settings.userEmail = _emailController.text.trim();
+    final auth = context.read<AuthProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    final navigator = Navigator.of(context);
+
+    final newName = _nameController.text.trim();
+    final nameChanged = newName != settings.userName;
+
+    // Email is read-only, so it's never written here.
+    settings.userName = newName;
     settings.userColorValue = _swatches[_selectedColorIndex].toARGB32();
-    Navigator.pop(context);
+
+    // Push the name to Supabase so it's the same across devices/sessions.
+    if (nameChanged && newName.isNotEmpty) {
+      final ok = await auth.updateDisplayName(newName);
+      if (!ok) {
+        messenger.showSnackBar(
+          const SnackBar(
+            content: Text(
+              "Name saved on this device, but couldn't sync to the server.",
+            ),
+          ),
+        );
+      }
+    }
+    navigator.pop();
   }
 
   /// The photo is applied immediately (not on Save Changes), so the change is
@@ -223,6 +245,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               borderColor,
               textPrimary,
               textSecondary,
+              readOnly: true,
             ),
             const SizedBox(height: 40),
 
@@ -289,8 +312,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Color bg,
     Color border,
     Color text,
-    Color labelColor,
-  ) {
+    Color labelColor, {
+    bool readOnly = false,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -305,10 +329,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 8),
         TextField(
           controller: controller,
-          style: GoogleFonts.manrope(color: text, fontSize: 16),
+          readOnly: readOnly,
+          // A read-only field (email) is dimmed and shows a "locked" affordance
+          // so it's clear it can't be edited here.
+          style: GoogleFonts.manrope(
+            color: readOnly ? text.withValues(alpha: 0.5) : text,
+            fontSize: 16,
+          ),
           decoration: InputDecoration(
             filled: true,
-            fillColor: bg,
+            fillColor: readOnly ? bg.withValues(alpha: 0.5) : bg,
+            suffixIcon: readOnly
+                ? Icon(
+                    Icons.lock_outline_rounded,
+                    size: 18,
+                    color: labelColor.withValues(alpha: 0.5),
+                  )
+                : null,
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16,
               vertical: 16,
