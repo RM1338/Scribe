@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -116,6 +117,8 @@ class SettingsProvider with ChangeNotifier {
   /// removed (e.g. a cache clear), so callers never point [FileImage] at a
   /// missing file. The existsSync check is cheap enough for build-time use.
   String? get userAvatarPath {
+    // No file-backed avatars in the browser; the coloured initial is used.
+    if (kIsWeb) return null;
     final path = _prefs.getString(_k('userAvatarPath'));
     if (path == null) return null;
     return File(path).existsSync() ? path : null;
@@ -126,6 +129,7 @@ class SettingsProvider with ChangeNotifier {
   /// path-keyed cache can't show the previous photo, and the old file is
   /// deleted so photos don't accumulate.
   Future<void> setUserAvatar(String sourcePath) async {
+    if (kIsWeb) return;
     final docs = await getApplicationDocumentsDirectory();
     final userTag = _userId ?? 'local';
     final ext = p.extension(sourcePath);

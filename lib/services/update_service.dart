@@ -1,5 +1,6 @@
 import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 /// A published release, as recorded in the `app_release` Supabase table.
@@ -36,6 +37,7 @@ class UpdateService {
   /// The platform key used in the `app_release` table, or null on platforms we
   /// don't distribute to (desktop), where there is nothing to check.
   static String? get platformKey {
+    if (kIsWeb) return null; // the web app is always the latest deploy
     if (Platform.isAndroid) return 'android';
     if (Platform.isIOS) return 'ios';
     return null;

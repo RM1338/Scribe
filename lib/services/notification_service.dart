@@ -16,6 +16,9 @@ class NotificationService {
   static const _channelId = 'scheduled_meetings';
 
   static Future<void> init() async {
+    // No local-notification support in browsers; reminders for web-scheduled
+    // meetings fire on the user's phone once the schedule syncs down.
+    if (kIsWeb) return;
     if (_initialized) return;
     tz_data.initializeTimeZones();
     try {
@@ -40,6 +43,7 @@ class NotificationService {
   /// Prompts for notification permission (Android 13+ / iOS). Returns whether
   /// notifications are allowed. Safe to call repeatedly.
   static Future<bool> requestPermissions() async {
+    if (kIsWeb) return false;
     await init();
     final android = _plugin
         .resolvePlatformSpecificImplementation<
@@ -68,6 +72,7 @@ class NotificationService {
   /// individually (e.g. a meeting scheduled 2 minutes out still gets the
   /// start-time reminder). Re-scheduling the same meeting replaces both.
   static Future<void> scheduleMeetingReminder(ScheduledMeeting m) async {
+    if (kIsWeb) return;
     await init();
 
     await _scheduleAt(
@@ -125,6 +130,7 @@ class NotificationService {
   }
 
   static Future<void> cancelMeetingReminder(String id) async {
+    if (kIsWeb) return;
     await _plugin.cancel(_idFor(id));
     await _plugin.cancel(_preIdFor(id));
   }

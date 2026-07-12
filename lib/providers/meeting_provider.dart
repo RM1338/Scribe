@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:path/path.dart' as p;
 import 'package:record/record.dart';
@@ -39,6 +40,11 @@ class MeetingProvider with ChangeNotifier {
   String? _selectedFolderId;
   bool _initialized = false;
   RecordingState _recordingState = RecordingState.idle;
+
+  /// MIME type of the in-progress/most recent web recording (the browser
+  /// picks WAV or WebM depending on MediaRecorder support). Meaningless off
+  /// web.
+  String _webRecordMime = 'audio/wav';
   ProcessingState _processingState = ProcessingState.idle;
   Duration _recordingDuration = Duration.zero;
   String _liveTranscriptBuffer = '';
@@ -289,6 +295,17 @@ class MeetingProvider with ChangeNotifier {
     _scheduledMeetings = scheduledData
         .map((e) => ScheduledMeeting.fromJson(e as Map<String, dynamic>))
         .toList();
+
+    // Re-arm reminders for every future meeting. Scheduling with the same id
+    // replaces, so this is idempotent for reminders this device already set —
+    // its purpose is meetings scheduled on the web or another device, which
+    // arrive via sync with no local notification yet. (No-op on web.)
+    for (final s in _scheduledMeetings) {
+      if (s.start.isAfter(DateTime.now())) {
+        NotificationService.scheduleMeetingReminder(s);
+      }
+    }
+
     _recentSearches = await _storage.loadRecentSearches();
     _initialized = true;
     notifyListeners();
@@ -617,12 +634,26 @@ class MeetingProvider with ChangeNotifier {
     _recordingDuration = Duration.zero;
     notifyListeners();
 
-    final recordingsDir = await _storage.recordingsDir();
-    final id = DateTime.now().millisecondsSinceEpoch.toString();
-    final path = p.join(recordingsDir.path, '$id.wav');
-
-    await _recorder.start(
-      RecordConfig(
+    final String path;
+    final RecordConfig config;
+    if (kIsWeb) {
+      // The browser records to an in-memory blob; the path argument is
+      // ignored and stop() returns a blob: URL. WAV when the browser's
+      // MediaRecorder supports it, otherwise Opus-in-WebM — Whisper accepts
+      // both, it just needs to be told which one it got.
+      final wavOk = await _recorder.isEncoderSupported(AudioEncoder.wav);
+      _webRecordMime = wavOk ? 'audio/wav' : 'audio/webm';
+      config = RecordConfig(
+        encoder: wavOk ? AudioEncoder.wav : AudioEncoder.opus,
+        sampleRate: 16000,
+        numChannels: 1,
+      );
+      path = '';
+    } else {
+      final recordingsDir = await _storage.recordingsDir();
+      final id = DateTime.now().millisecondsSinceEpoch.toString();
+      path = p.join(recordingsDir.path, '$id.wav');
+      config = RecordConfig(
         encoder: AudioEncoder.wav,
         sampleRate: 16000,
         numChannels: 1,
@@ -635,9 +666,10 @@ class MeetingProvider with ChangeNotifier {
                 _settings!.audioSourceId.isNotEmpty
             ? InputDevice(id: _settings!.audioSourceId, label: '')
             : null,
-      ),
-      path: path,
-    );
+      );
+    }
+
+    await _recorder.start(config, path: path);
 
     _recordingState = RecordingState.recording;
     _liveTranscriptBuffer = '';
@@ -705,7 +737,7 @@ class MeetingProvider with ChangeNotifier {
     _stopTimer();
     final path = await _recorder.stop();
     debugPrint('Recorder stopped. Path: $path');
-    if (path != null) {
+    if (path != null && !kIsWeb) {
       final file = File(path);
       if (await file.exists()) {
         final size = await file.length();
@@ -721,14 +753,26 @@ class MeetingProvider with ChangeNotifier {
 
   // ── Playback ─────────────────────────────────────────────
   Future<void> playMeeting(Meeting meeting) async {
-    if (meeting.audioFilePath == null) return;
-
-    final file = File(meeting.audioFilePath!);
-    if (!await file.exists()) {
-      _notificationController.add(
-        'Audio file not found at ${meeting.audioFilePath}',
-      );
+    if (meeting.audioFilePath == null) {
+      // Text-only sync: a meeting viewed away from the device that recorded
+      // it has its transcript and summary, but not its audio.
+      if (!meeting.isNote) {
+        _notificationController.add(
+          'Audio stays on the device that recorded this meeting.',
+        );
+      }
       return;
+    }
+
+    final isBlobUrl = meeting.audioFilePath!.startsWith('blob:');
+    if (!kIsWeb && !isBlobUrl) {
+      final file = File(meeting.audioFilePath!);
+      if (!await file.exists()) {
+        _notificationController.add(
+          'Audio file not found at ${meeting.audioFilePath}',
+        );
+        return;
+      }
     }
 
     try {
@@ -746,7 +790,13 @@ class MeetingProvider with ChangeNotifier {
         position.value = Duration.zero;
         _totalDuration = Duration.zero;
         await _audioPlayer.setPlaybackRate(_playbackSpeed);
-        await _audioPlayer.play(DeviceFileSource(meeting.audioFilePath!));
+        // A blob: URL (web session recording) must be played as a URL; a real
+        // path as a device file.
+        await _audioPlayer.play(
+          meeting.audioFilePath!.startsWith('blob:') || kIsWeb
+              ? UrlSource(meeting.audioFilePath!)
+              : DeviceFileSource(meeting.audioFilePath!),
+        );
       }
     } catch (e) {
       debugPrint('AudioPlayer error: $e');
@@ -858,6 +908,7 @@ class MeetingProvider with ChangeNotifier {
         diarize: _settings?.isSpeakerIdEnabled ?? false,
         apiKey: _settings?.groqApiKey,
         useCloudMode: _settings?.isCloudMode ?? true,
+        blobMime: _webRecordMime,
       );
       debugPrint(
         'Transcription result received. Text length: ${result.fullText.length}',

@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -64,7 +65,7 @@ class ScribeApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDesktop =
-        Platform.isLinux || Platform.isMacOS || Platform.isWindows;
+        !kIsWeb && (Platform.isLinux || Platform.isMacOS || Platform.isWindows);
 
     final settings = context.watch<SettingsProvider>();
     final themeMode = _getThemeMode(settings.themeMode);

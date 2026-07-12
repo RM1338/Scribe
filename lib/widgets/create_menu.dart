@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../theme/app_theme.dart';
@@ -47,23 +48,26 @@ void showScribeCreateMenu(BuildContext context) {
             const SizedBox(height: 24),
 
             // 3. Action Items
-            _buildMenuAction(
-              icon: Icons.cloud_upload_rounded,
-              title: 'Upload Recording',
-              subtitle: 'Upload an existing audio file',
-              teal: scribeTeal,
-              primary: textPrimary,
-              secondary: textSecondary,
-              onTap: () {
-                Navigator.pop(context); // Close the bottom sheet
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const UploadSelectionScreen(),
-                  ),
-                );
-              },
-            ),
+            // Uploading an existing file needs the device filesystem; on the
+            // web, recording directly is the way in.
+            if (!kIsWeb)
+              _buildMenuAction(
+                icon: Icons.cloud_upload_rounded,
+                title: 'Upload Recording',
+                subtitle: 'Upload an existing audio file',
+                teal: scribeTeal,
+                primary: textPrimary,
+                secondary: textSecondary,
+                onTap: () {
+                  Navigator.pop(context); // Close the bottom sheet
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const UploadSelectionScreen(),
+                    ),
+                  );
+                },
+              ),
             _buildMenuAction(
               icon: Icons.create_new_folder_rounded,
               title: 'Create Project Folder',

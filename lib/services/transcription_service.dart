@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http_parser/http_parser.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -39,8 +40,9 @@ class TranscriptionService {
     bool diarize = false,
     String? apiKey,
     bool useCloudMode = true,
+    String? blobMime,
   }) async {
-    if (!useCloudMode) {
+    if (!useCloudMode && !kIsWeb) {
       return _transcribeLocal(audioPath, language, diarize);
     }
 
@@ -55,12 +57,14 @@ class TranscriptionService {
             language,
             uri: Uri.parse(_groqTranscribeUrl),
             headers: {'Authorization': 'Bearer $apiKey'},
+            blobMime: blobMime,
           )
         : await _transcribeWhisper(
             audioPath,
             language,
             uri: _functionUri('groq-transcribe'),
             headers: _functionHeaders(),
+            blobMime: blobMime,
           );
 
     if (diarize && result.segments.isNotEmpty) {
@@ -87,23 +91,41 @@ class TranscriptionService {
     String? language, {
     required Uri uri,
     required Map<String, String> headers,
+    String? blobMime,
   }) async {
-    final file = File(audioPath);
-    if (!await file.exists()) {
-      throw Exception('Audio file not found: $audioPath');
-    }
-
     final request = http.MultipartRequest('POST', uri)
       ..headers.addAll(headers)
       ..fields['model'] = 'whisper-large-v3-turbo'
-      ..fields['response_format'] = 'verbose_json'
-      ..files.add(
+      ..fields['response_format'] = 'verbose_json';
+
+    if (kIsWeb || audioPath.startsWith('blob:')) {
+      // Web recordings live in a browser blob, not a file. Fetch the bytes
+      // and label them with the MIME the recorder actually produced — Groq
+      // keys its decoder off the filename extension.
+      final bytes = await http.readBytes(Uri.parse(audioPath));
+      final mime = blobMime ?? 'audio/webm';
+      final ext = mime.contains('wav') ? 'wav' : 'webm';
+      request.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: 'audio.$ext',
+          contentType: MediaType.parse(mime),
+        ),
+      );
+    } else {
+      final file = File(audioPath);
+      if (!await file.exists()) {
+        throw Exception('Audio file not found: $audioPath');
+      }
+      request.files.add(
         await http.MultipartFile.fromPath(
           'file',
           audioPath,
           contentType: MediaType('audio', 'wav'),
         ),
       );
+    }
 
     // Omitted entirely when null, which is how Whisper is asked to auto-detect.
     final languageCode = AppLanguage.codeFor(language);
