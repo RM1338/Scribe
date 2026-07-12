@@ -8,6 +8,7 @@ import 'providers/auth_provider.dart';
 import 'providers/meeting_provider.dart';
 import 'providers/settings_provider.dart';
 import 'services/auth_service.dart';
+import 'services/notification_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
@@ -21,6 +22,9 @@ void main() async {
     url: dotenv.env['SUPABASE_URL']!,
     publishableKey: dotenv.env['SUPABASE_ANON_KEY']!,
   );
+
+  // Prepare local notifications (timezone + channels) for meeting reminders.
+  await NotificationService.init();
 
   runApp(
     MultiProvider(

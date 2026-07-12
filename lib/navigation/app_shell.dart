@@ -31,12 +31,12 @@ class _AppShellState extends State<AppShell> {
     setState(() => _currentIndex = index);
   }
 
-  final _screens = const [
-    LibraryScreen(),
-    RecordScreen(),
-    ScheduleScreen(), // Replaced SearchScreen at index 2 for BottomNav
-    HighlightsScreen(),
-    SettingsScreen(),
+  final _screens = [
+    const LibraryScreen(),
+    RecordScreen(key: RecordScreen.recordKey),
+    const ScheduleScreen(), // Replaced SearchScreen at index 2 for BottomNav
+    const HighlightsScreen(),
+    const SettingsScreen(),
   ];
 
   @override

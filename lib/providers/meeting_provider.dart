@@ -7,7 +7,9 @@ import 'package:speech_to_text/speech_to_text.dart';
 import 'package:audioplayers/audioplayers.dart';
 import '../models/meeting.dart';
 import '../models/folder.dart';
+import '../models/scheduled_meeting.dart';
 import '../services/storage_service.dart';
+import '../services/notification_service.dart';
 import '../services/transcription_service.dart';
 import '../services/summary_service.dart';
 import '../services/translation_service.dart';
@@ -31,6 +33,7 @@ class MeetingProvider with ChangeNotifier {
 
   List<Meeting> _meetings = [];
   List<Folder> _folders = [];
+  List<ScheduledMeeting> _scheduledMeetings = [];
   List<String> _recentSearches = [];
   String _selectedFilter = 'All';
   String? _selectedFolderId;
@@ -282,6 +285,10 @@ class MeetingProvider with ChangeNotifier {
 
     final folderData = await _storage.loadFolders();
     _folders = folderData.map((e) => Folder.fromJson(e)).toList();
+    final scheduledData = await _storage.loadScheduledMeetings();
+    _scheduledMeetings = scheduledData
+        .map((e) => ScheduledMeeting.fromJson(e as Map<String, dynamic>))
+        .toList();
     _recentSearches = await _storage.loadRecentSearches();
     _initialized = true;
     notifyListeners();
@@ -313,6 +320,7 @@ class MeetingProvider with ChangeNotifier {
 
     _meetings = [];
     _folders = [];
+    _scheduledMeetings = [];
     _recentSearches = [];
     _selectedFilter = 'All';
     _selectedFolderId = null;
@@ -410,6 +418,56 @@ class MeetingProvider with ChangeNotifier {
       folderIds: m.folderIds.where((id) => id != folderId).toList(),
     );
     await _storage.saveMeetings(_meetings);
+    notifyListeners();
+  }
+
+  // ── Scheduled meetings (stored in-app, not the device calendar) ──────────
+  List<ScheduledMeeting> get scheduledMeetings =>
+      List.from(_scheduledMeetings);
+
+  /// Scheduled meetings that fall on [day], earliest first.
+  List<ScheduledMeeting> scheduledMeetingsOn(DateTime day) {
+    final result =
+        _scheduledMeetings
+            .where(
+              (s) =>
+                  s.start.year == day.year &&
+                  s.start.month == day.month &&
+                  s.start.day == day.day,
+            )
+            .toList()
+          ..sort((a, b) => a.start.compareTo(b.start));
+    return result;
+  }
+
+  Future<void> addScheduledMeeting(
+    String title,
+    DateTime start, {
+    int durationMinutes = 60,
+    String? description,
+  }) async {
+    final scheduled = ScheduledMeeting(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: title,
+      description: description,
+      start: start,
+      durationMinutes: durationMinutes,
+    );
+    _scheduledMeetings.add(scheduled);
+    await _storage.saveScheduledMeetings(
+      _scheduledMeetings.map((s) => s.toJson()).toList(),
+    );
+    // Fire-and-forget the reminder; storage is the source of truth.
+    NotificationService.scheduleMeetingReminder(scheduled);
+    notifyListeners();
+  }
+
+  Future<void> deleteScheduledMeeting(String id) async {
+    _scheduledMeetings.removeWhere((s) => s.id == id);
+    await _storage.saveScheduledMeetings(
+      _scheduledMeetings.map((s) => s.toJson()).toList(),
+    );
+    NotificationService.cancelMeetingReminder(id);
     notifyListeners();
   }
 

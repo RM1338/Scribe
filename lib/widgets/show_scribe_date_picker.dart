@@ -47,6 +47,10 @@ Future<DateTime?> showScribeDatePicker(
             viewMonth.month,
             1,
           ).weekday;
+          // Meetings can't be scheduled in the past, so days before today are
+          // shown greyed and aren't selectable.
+          final DateTime now = DateTime.now();
+          final DateTime todayDate = DateTime(now.year, now.month, now.day);
           final List<String> monthNames = [
             'JANUARY',
             'FEBRUARY',
@@ -277,21 +281,25 @@ Future<DateTime?> showScribeDatePicker(
                         return const SizedBox.shrink();
                       }
                       int day = dayOffset + 1;
+                      final DateTime cellDate = DateTime(
+                        viewMonth.year,
+                        viewMonth.month,
+                        day,
+                      );
+                      final bool isPast = cellDate.isBefore(todayDate);
                       bool isSelected =
                           selectedDate.year == viewMonth.year &&
                           selectedDate.month == viewMonth.month &&
                           selectedDate.day == day;
 
                       return GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            selectedDate = DateTime(
-                              viewMonth.year,
-                              viewMonth.month,
-                              day,
-                            );
-                          });
-                        },
+                        onTap: isPast
+                            ? null
+                            : () {
+                                setState(() {
+                                  selectedDate = cellDate;
+                                });
+                              },
                         child: Container(
                           decoration: BoxDecoration(
                             color: isSelected ? scribeTeal : Colors.transparent,
@@ -301,7 +309,11 @@ Future<DateTime?> showScribeDatePicker(
                             child: Text(
                               '$day',
                               style: TextStyle(
-                                color: isSelected ? Colors.white : textPrimary,
+                                color: isSelected
+                                    ? Colors.white
+                                    : isPast
+                                    ? textSecondary.withValues(alpha: 0.35)
+                                    : textPrimary,
                                 fontWeight: isSelected
                                     ? FontWeight.bold
                                     : FontWeight.normal,

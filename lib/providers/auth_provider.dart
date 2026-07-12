@@ -114,4 +114,18 @@ class AuthProvider with ChangeNotifier {
   Future<void> signOut() {
     return _service.signOut();
   }
+
+  /// Persists a new display name to Supabase and refreshes local state so the
+  /// avatar/greeting update. Returns false if the update failed.
+  Future<bool> updateDisplayName(String fullName) async {
+    try {
+      await _service.updateDisplayName(fullName);
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _errorMessage = e.toString();
+      notifyListeners();
+      return false;
+    }
+  }
 }

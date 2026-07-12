@@ -146,4 +146,12 @@ class AuthService {
   Future<void> signOut() {
     return _client.auth.signOut();
   }
+
+  /// Updates the signed-in user's display name in Supabase (the `full_name`
+  /// user-metadata field, the same one set at sign-up).
+  Future<void> updateDisplayName(String fullName) async {
+    await _client.auth.updateUser(
+      UserAttributes(data: {'full_name': fullName}),
+    );
+  }
 }
