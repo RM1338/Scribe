@@ -172,13 +172,13 @@ class AppTheme {
     );
   }
 
-  static ThemeData get light {
+  static ThemeData light([Color accent = AppColors.primary]) {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.light,
       scaffoldBackgroundColor: AppColors.background,
-      colorScheme: const ColorScheme.light(
-        primary: AppColors.primary,
+      colorScheme: ColorScheme.light(
+        primary: accent,
         secondary: AppColors.accent,
         surface: AppColors.surface,
         onPrimary: Colors.white,
@@ -195,6 +195,19 @@ class AppTheme {
         iconTheme: const IconDataTheme(color: AppColors.textPrimary),
       ),
       dividerColor: AppColors.separator,
+      // Ensures every AlertDialog is legible without each one restating its
+      // colors -- the default title/content styles were rendering dark-on-dark.
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.surface,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: AppText.dialogTitle.copyWith(
+          color: AppColors.textPrimary,
+        ),
+        contentTextStyle: GoogleFonts.manrope(
+          fontSize: 14,
+          color: AppColors.textSecondary,
+        ),
+      ),
       textTheme: _buildTextTheme(
         AppColors.textPrimary,
         AppColors.textSecondary,
@@ -213,21 +226,21 @@ class AppTheme {
         ),
         trackColor: WidgetStateProperty.resolveWith(
           (s) => s.contains(WidgetState.selected)
-              ? AppColors.primary
+              ? accent
               : AppColors.separator,
         ),
       ),
     );
   }
 
-  static ThemeData get dark {
+  static ThemeData dark([Color accent = AppColors.primary]) {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
       scaffoldBackgroundColor: AppColors.darkBackground,
       splashFactory: NoSplash.splashFactory,
-      colorScheme: const ColorScheme.dark(
-        primary: AppColors.primary,
+      colorScheme: ColorScheme.dark(
+        primary: accent,
         secondary: AppColors.accent,
         surface: AppColors.darkSurface,
         onPrimary: Colors.white,
@@ -244,6 +257,19 @@ class AppTheme {
         iconTheme: const IconDataTheme(color: AppColors.darkTextPrimary),
       ),
       dividerColor: AppColors.darkSeparator,
+      // Ensures every AlertDialog is legible without each one restating its
+      // colors -- the default title/content styles were rendering dark-on-dark.
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.darkSurface,
+        surfaceTintColor: Colors.transparent,
+        titleTextStyle: AppText.dialogTitle.copyWith(
+          color: AppColors.darkTextPrimary,
+        ),
+        contentTextStyle: GoogleFonts.manrope(
+          fontSize: 14,
+          color: AppColors.darkTextSecondary,
+        ),
+      ),
       textTheme: _buildTextTheme(
         AppColors.darkTextPrimary,
         AppColors.darkTextSecondary,
@@ -259,7 +285,7 @@ class AppTheme {
         thumbColor: WidgetStateProperty.resolveWith((s) => Colors.white),
         trackColor: WidgetStateProperty.resolveWith(
           (s) => s.contains(WidgetState.selected)
-              ? AppColors.primary
+              ? accent
               : AppColors.darkSurfaceVariant,
         ),
       ),
@@ -282,11 +308,11 @@ extension ThemeColors on BuildContext {
       _isDark ? AppColors.darkTextSecondary : AppColors.textSecondary;
   Color get appTextTertiary =>
       _isDark ? AppColors.darkTextTertiary : AppColors.textTertiary;
-  // Primary is always Teal in Granola
-  Color get appPrimary => AppColors.primary;
-  Color get appPrimaryLight => _isDark
-      ? AppColors.primary.withValues(alpha: 0.15)
-      : AppColors.primaryLight;
+  // Primary follows the user's chosen profile color (see SettingsProvider),
+  // wired through the active ThemeData so every `context.appPrimary` updates.
+  Color get appPrimary => Theme.of(this).colorScheme.primary;
+  Color get appPrimaryLight =>
+      appPrimary.withValues(alpha: _isDark ? 0.15 : 0.12);
   Color get appAccent => AppColors.accent;
   Color get appRecordRed => AppColors.recordRed;
   Color get appGray => AppColors.gray;

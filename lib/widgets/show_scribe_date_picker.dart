@@ -17,7 +17,8 @@ Future<DateTime?> showScribeDatePicker(
   final Color textSecondary = isDark
       ? const Color(0xFFAAAAAA)
       : const Color(0xFF6B6B6B);
-  const Color scribeTeal = Color(0xFF1A8C7E);
+  // Follows the user's chosen profile/accent colour.
+  final Color scribeTeal = context.appPrimary;
 
   return showModalBottomSheet<DateTime>(
     context: context,
@@ -92,9 +93,7 @@ Future<DateTime?> showScribeDatePicker(
                       child: Row(
                         children: [
                           Text(
-                            showMonthYearPicker
-                                ? '${viewMonth.year}'
-                                : '${monthNames[viewMonth.month - 1]} ${viewMonth.year}',
+                            '${monthNames[viewMonth.month - 1]} ${viewMonth.year}',
                             style: context.dialogTitle,
                           ),
                           const SizedBox(width: 4),
@@ -108,51 +107,84 @@ Future<DateTime?> showScribeDatePicker(
                         ],
                       ),
                     ),
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: Icon(Icons.chevron_left, color: textSecondary),
-                          onPressed: () {
-                            setState(() {
-                              if (showMonthYearPicker) {
-                                viewMonth = DateTime(
-                                  viewMonth.year - 1,
-                                  viewMonth.month,
-                                );
-                              } else {
+                    // Month navigation only applies to the calendar grid; in the
+                    // month/year picker the dedicated year stepper handles it.
+                    if (!showMonthYearPicker)
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: Icon(
+                              Icons.chevron_left,
+                              color: textSecondary,
+                            ),
+                            onPressed: () {
+                              setState(() {
                                 viewMonth = DateTime(
                                   viewMonth.year,
                                   viewMonth.month - 1,
                                 );
-                              }
-                            });
-                          },
-                        ),
-                        IconButton(
-                          icon: Icon(Icons.chevron_right, color: textSecondary),
-                          onPressed: () {
-                            setState(() {
-                              if (showMonthYearPicker) {
-                                viewMonth = DateTime(
-                                  viewMonth.year + 1,
-                                  viewMonth.month,
-                                );
-                              } else {
+                              });
+                            },
+                          ),
+                          IconButton(
+                            icon: Icon(
+                              Icons.chevron_right,
+                              color: textSecondary,
+                            ),
+                            onPressed: () {
+                              setState(() {
                                 viewMonth = DateTime(
                                   viewMonth.year,
                                   viewMonth.month + 1,
                                 );
-                              }
-                            });
-                          },
-                        ),
-                      ],
-                    ),
+                              });
+                            },
+                          ),
+                        ],
+                      ),
                   ],
                 ),
                 const SizedBox(height: 20),
 
                 if (showMonthYearPicker) ...[
+                  // Year stepper — an explicit, labelled control so changing the
+                  // year is obvious (the old flow hid it behind the header arrows).
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      IconButton(
+                        icon: Icon(Icons.chevron_left, color: scribeTeal),
+                        onPressed: () {
+                          setState(() {
+                            viewMonth = DateTime(
+                              viewMonth.year - 1,
+                              viewMonth.month,
+                            );
+                          });
+                        },
+                      ),
+                      SizedBox(
+                        width: 90,
+                        child: Text(
+                          '${viewMonth.year}',
+                          textAlign: TextAlign.center,
+                          style: context.dialogTitle,
+                        ),
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.chevron_right, color: scribeTeal),
+                        onPressed: () {
+                          setState(() {
+                            viewMonth = DateTime(
+                              viewMonth.year + 1,
+                              viewMonth.month,
+                            );
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                   // Month Grid
                   GridView.builder(
                     shrinkWrap: true,

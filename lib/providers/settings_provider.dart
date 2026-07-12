@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import 'package:record/record.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../theme/app_theme.dart';
 
 enum SummaryStyle { bulletPoints, executiveSummary, detailedNarrative }
@@ -109,6 +111,50 @@ class SettingsProvider with ChangeNotifier {
   String get userInitial =>
       userName.trim().isNotEmpty ? userName.trim()[0].toUpperCase() : 'S';
 
+  /// Absolute path to the user's chosen profile photo, or null to fall back to
+  /// the coloured initial. Returns null if the stored file has since been
+  /// removed (e.g. a cache clear), so callers never point [FileImage] at a
+  /// missing file. The existsSync check is cheap enough for build-time use.
+  String? get userAvatarPath {
+    final path = _prefs.getString(_k('userAvatarPath'));
+    if (path == null) return null;
+    return File(path).existsSync() ? path : null;
+  }
+
+  /// Copies [sourcePath] (a freshly picked image) into app storage and points
+  /// the profile at it. Each save uses a new filename so [FileImage]'s
+  /// path-keyed cache can't show the previous photo, and the old file is
+  /// deleted so photos don't accumulate.
+  Future<void> setUserAvatar(String sourcePath) async {
+    final docs = await getApplicationDocumentsDirectory();
+    final userTag = _userId ?? 'local';
+    final ext = p.extension(sourcePath);
+    final stamp = DateTime.now().millisecondsSinceEpoch;
+    final dest = File(p.join(docs.path, 'avatar_${userTag}_$stamp$ext'));
+    await File(sourcePath).copy(dest.path);
+
+    final previous = _prefs.getString(_k('userAvatarPath'));
+    await _prefs.setString(_k('userAvatarPath'), dest.path);
+    if (previous != null && previous != dest.path) {
+      try {
+        await File(previous).delete();
+      } catch (_) {}
+    }
+    notifyListeners();
+  }
+
+  /// Clears the profile photo, reverting to the coloured initial.
+  Future<void> removeUserAvatar() async {
+    final previous = _prefs.getString(_k('userAvatarPath'));
+    await _prefs.remove(_k('userAvatarPath'));
+    if (previous != null) {
+      try {
+        await File(previous).delete();
+      } catch (_) {}
+    }
+    notifyListeners();
+  }
+
   // --- Transcription ---
   String get defaultLanguage =>
       _prefs.getString(_k('defaultLanguage')) ?? 'Auto-detect';
@@ -170,24 +216,19 @@ class SettingsProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  // --- Privacy ---
-  String get groqApiKey {
-    final storedKey = _prefs.getString(_keyGroqApiKey);
-    if (storedKey != null && storedKey.isNotEmpty) {
-      return storedKey;
-    }
-    return dotenv.env['GROQ_API_KEY'] ?? '';
-  }
+  // --- Groq access ---
+  // No Groq key ships in the app. Users on the default experience route through
+  // the Supabase Edge Function proxy (the key lives there as a secret). A user
+  // who pastes their own key here is billed directly against it instead. An
+  // empty string therefore means "use the proxy", never "no access".
+  String get groqApiKey => _prefs.getString(_keyGroqApiKey) ?? '';
 
-  bool get isUsingDefaultKey {
-    final storedKey = _prefs.getString(_keyGroqApiKey);
-    return (storedKey == null || storedKey.isEmpty) &&
-        (dotenv.env['GROQ_API_KEY'] != null &&
-            dotenv.env['GROQ_API_KEY']!.isNotEmpty);
-  }
+  /// True when the user brought their own key; false means calls go through the
+  /// server-side proxy.
+  bool get hasUserApiKey => groqApiKey.isNotEmpty;
 
   set groqApiKey(String value) {
-    _prefs.setString(_keyGroqApiKey, value);
+    _prefs.setString(_keyGroqApiKey, value.trim());
     notifyListeners();
   }
 

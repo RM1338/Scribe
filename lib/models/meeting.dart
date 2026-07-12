@@ -104,7 +104,10 @@ class Meeting {
   final List<String> highlights;
   final List<MeetingSegment> segments;
   final bool isFavorite;
-  final String? folderId;
+
+  /// Folders this meeting belongs to. A meeting can live in several at once, so
+  /// this is a list rather than a single id. Empty means unfiled.
+  final List<String> folderIds;
   final DateTime? recordedAt;
   final List<String> speakers;
   final List<String> tags;
@@ -116,7 +119,15 @@ class Meeting {
   /// The user's own free-text note for this recording -- things the transcript
   /// and AI summary didn't capture. Null on every meeting created before this
   /// field existed, and whenever the user has left it empty.
+  ///
+  /// When [isNote] is true this holds the note's whole body: a standalone note
+  /// is just a [Meeting] with no audio, so it reuses the same field.
   final String? notes;
+
+  /// A standalone, typed note rather than a recording -- no audio, transcript,
+  /// or summary. Its body lives in [notes]. Everything else (folders, favourite,
+  /// search, delete) works on it unchanged because it is still a [Meeting].
+  final bool isNote;
 
   /// Cached translations, keyed by ISO-639-1 code. Populated on demand.
   final Map<String, MeetingTranslation> translations;
@@ -144,7 +155,7 @@ class Meeting {
     this.highlights = const [],
     this.segments = const [],
     this.isFavorite = false,
-    this.folderId,
+    this.folderIds = const [],
     this.recordedAt,
     this.speakers = const [],
     this.tags = const [],
@@ -153,6 +164,7 @@ class Meeting {
     this.speakerMapping = const {},
     this.detectedLanguage,
     this.notes,
+    this.isNote = false,
     this.translations = const {},
     this.completedActionItems = const {},
   });
@@ -241,7 +253,7 @@ class Meeting {
     List<String>? highlights,
     List<MeetingSegment>? segments,
     bool? isFavorite,
-    String? folderId,
+    List<String>? folderIds,
     DateTime? recordedAt,
     List<String>? speakers,
     List<String>? tags,
@@ -250,6 +262,7 @@ class Meeting {
     Map<String, String>? speakerMapping,
     String? detectedLanguage,
     String? notes,
+    bool? isNote,
     Map<String, MeetingTranslation>? translations,
     Set<int>? completedActionItems,
   }) {
@@ -268,7 +281,7 @@ class Meeting {
       highlights: highlights ?? this.highlights,
       segments: segments ?? this.segments,
       isFavorite: isFavorite ?? this.isFavorite,
-      folderId: folderId ?? this.folderId,
+      folderIds: folderIds ?? this.folderIds,
       recordedAt: recordedAt ?? this.recordedAt,
       speakers: speakers ?? this.speakers,
       tags: tags ?? this.tags,
@@ -277,6 +290,7 @@ class Meeting {
       speakerMapping: speakerMapping ?? this.speakerMapping,
       detectedLanguage: detectedLanguage ?? this.detectedLanguage,
       notes: notes ?? this.notes,
+      isNote: isNote ?? this.isNote,
       translations: translations ?? this.translations,
       completedActionItems: completedActionItems ?? this.completedActionItems,
     );
@@ -303,7 +317,13 @@ class Meeting {
           .map((s) => MeetingSegment.fromJson(s as Map<String, dynamic>))
           .toList(),
       isFavorite: json['isFavorite'] as bool? ?? false,
-      folderId: json['folderId'] as String?,
+      // `folderIds` is the current shape; fall back to the legacy single
+      // `folderId` so meetings saved before multi-folder keep their folder.
+      folderIds: json['folderIds'] != null
+          ? List<String>.from(json['folderIds'])
+          : (json['folderId'] != null
+                ? [json['folderId'] as String]
+                : const <String>[]),
       recordedAt: json['recordedAt'] != null
           ? DateTime.tryParse(json['recordedAt'] as String)
           : null,
@@ -314,6 +334,7 @@ class Meeting {
       speakerMapping: Map<String, String>.from(json['speakerMapping'] ?? {}),
       detectedLanguage: json['detectedLanguage'] as String?,
       notes: json['notes'] as String?,
+      isNote: json['isNote'] as bool? ?? false,
       // Absent on every meeting recorded before translation existed.
       translations: (json['translations'] as Map<String, dynamic>? ?? {}).map(
         (code, value) => MapEntry(
@@ -342,7 +363,7 @@ class Meeting {
     'highlights': highlights,
     'segments': segments.map((s) => s.toJson()).toList(),
     'isFavorite': isFavorite,
-    'folderId': folderId,
+    'folderIds': folderIds,
     'recordedAt': recordedAt?.toIso8601String(),
     'speakers': speakers,
     'tags': tags,
@@ -351,6 +372,7 @@ class Meeting {
     'speakerMapping': speakerMapping,
     'detectedLanguage': detectedLanguage,
     'notes': notes,
+    'isNote': isNote,
     'translations': translations.map((code, t) => MapEntry(code, t.toJson())),
     // Sorted so a meeting's JSON is stable across saves.
     'completedActionItems': completedActionItems.toList()..sort(),

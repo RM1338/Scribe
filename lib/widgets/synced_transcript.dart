@@ -59,6 +59,7 @@ class SyncedTranscript extends StatefulWidget {
     required this.onSeek,
     this.density = TranscriptDensity.compact,
     this.headerBuilder,
+    this.onEditLine,
     this.padding = const EdgeInsets.fromLTRB(20, 0, 20, 100),
   });
 
@@ -66,6 +67,11 @@ class SyncedTranscript extends StatefulWidget {
   final ValueListenable<Duration> position;
   final ValueChanged<Duration> onSeek;
   final TranscriptDensity density;
+
+  /// Long-press handler for a line, by index. When null, lines aren't editable
+  /// -- the full-screen player leaves this unset; the Transcript tab passes it
+  /// only while the original (untranslated) transcript is showing.
+  final ValueChanged<int>? onEditLine;
 
   /// Rendered above each line. Used by the Transcript tab for the speaker
   /// avatar, name, and timestamp; omitted in the full-screen view.
@@ -165,7 +171,7 @@ class _SyncedTranscriptState extends State<SyncedTranscript> {
 
   @override
   Widget build(BuildContext context) {
-    return NotificationListener<ScrollNotification>(
+    final list = NotificationListener<ScrollNotification>(
       onNotification: (notification) {
         // dragDetails is non-null only for a real finger drag, so our own
         // animated scrollTo doesn't detach us from the playhead.
@@ -190,12 +196,38 @@ class _SyncedTranscriptState extends State<SyncedTranscript> {
                 density: widget.density,
                 header: widget.headerBuilder?.call(context, segment, index),
                 onTap: () => _onLineTapped(segment),
+                onLongPress: widget.onEditLine == null
+                    ? null
+                    : () => widget.onEditLine!(index),
               );
             },
           );
         },
       ),
     );
+
+    // In the full-screen lyrics view the list scrolls behind the title and
+    // controls below it. Fade the top and bottom edges so lines dissolve into
+    // the background instead of being hard-clipped mid-sentence.
+    if (widget.density == TranscriptDensity.fullScreen) {
+      return ShaderMask(
+        shaderCallback: (bounds) => const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Colors.transparent,
+            Colors.black,
+            Colors.black,
+            Colors.transparent,
+          ],
+          stops: [0.0, 0.08, 0.85, 1.0],
+        ).createShader(bounds),
+        blendMode: BlendMode.dstIn,
+        child: list,
+      );
+    }
+
+    return list;
   }
 }
 
@@ -205,6 +237,7 @@ class _TranscriptLine extends StatelessWidget {
     required this.isActive,
     required this.density,
     required this.onTap,
+    this.onLongPress,
     this.header,
   });
 
@@ -212,6 +245,7 @@ class _TranscriptLine extends StatelessWidget {
   final bool isActive;
   final TranscriptDensity density;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
   final Widget? header;
 
   @override
@@ -222,7 +256,9 @@ class _TranscriptLine extends StatelessWidget {
         ? AppText.pageTitle.copyWith(
             fontSize: 24,
             height: 1.35,
-            color: isActive ? context.appTextPrimary : context.appTextTertiary,
+            color: isActive
+                ? context.appTextPrimary
+                : context.appTextSecondary,
           )
         : AppText.cardTitle.copyWith(
             fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
@@ -233,6 +269,7 @@ class _TranscriptLine extends StatelessWidget {
 
     return GestureDetector(
       onTap: onTap,
+      onLongPress: onLongPress,
       behavior: HitTestBehavior.opaque,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),

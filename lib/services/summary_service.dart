@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MeetingSummary {
   final String summary;
@@ -52,7 +54,10 @@ class SummaryService {
       return const MeetingSummary(summary: 'No transcript available.');
     }
 
-    final isCloud = useCloudMode && apiKey != null && apiKey.isNotEmpty;
+    // Cloud covers both the proxy (no user key) and BYOK (user key present);
+    // `_cloudChat` picks the route. Only an explicit non-cloud toggle uses the
+    // local Ollama server.
+    final isCloud = useCloudMode;
 
     // ── Language instruction ─────────────────────────────────────────────────
     // If Whisper detected a non-English language, tell the LLM to respond
@@ -136,49 +141,49 @@ TRANSCRIPT:
 $transcript''';
 
     try {
-      final response = await http
-          .post(
-            Uri.parse(isCloud ? _groqUrl : _ollamaUrl),
-            headers: {
-              'Content-Type': 'application/json',
-              if (isCloud) 'Authorization': 'Bearer $apiKey',
+      final String responseText;
+      if (isCloud) {
+        final responseData = await _cloudChat({
+          'model': _groqModel,
+          'messages': [
+            {
+              'role': 'system',
+              'content':
+                  'You are a professional meeting assistant that responds ONLY in valid JSON.',
             },
-            body: jsonEncode(
-              isCloud
-                  ? {
-                      'model': _groqModel,
-                      'messages': [
-                        {
-                          'role': 'system',
-                          'content':
-                              'You are a professional meeting assistant that responds ONLY in valid JSON.',
-                        },
-                        {'role': 'user', 'content': prompt},
-                      ],
-                      'response_format': {'type': 'json_object'},
-                    }
-                  : {
-                      'model': model,
-                      'prompt': prompt,
-                      'stream': false,
-                      'format': 'json',
-                    },
-            ),
-          )
-          .timeout(const Duration(minutes: 3));
+            {'role': 'user', 'content': prompt},
+          ],
+          'response_format': {'type': 'json_object'},
+        }, apiKey);
+        responseText =
+            responseData['choices'][0]['message']['content'] as String;
+      } else {
+        final response = await http
+            .post(
+              Uri.parse(_ollamaUrl),
+              headers: {'Content-Type': 'application/json'},
+              body: jsonEncode({
+                'model': model,
+                'prompt': prompt,
+                'stream': false,
+                'format': 'json',
+              }),
+            )
+            .timeout(const Duration(minutes: 3));
 
-      if (response.statusCode != 200) {
-        throw Exception('API error: ${response.statusCode} - ${response.body}');
+        if (response.statusCode != 200) {
+          throw Exception(
+            'API error: ${response.statusCode} - ${response.body}',
+          );
+        }
+
+        // Decode as UTF-8 explicitly: `response.body` falls back to latin-1
+        // when the server sends no charset, which mangles every non-ASCII
+        // script the language instruction above may have asked for.
+        final responseData =
+            jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+        responseText = responseData['response'] as String;
       }
-
-      // Decode as UTF-8 explicitly: `response.body` falls back to latin-1 when
-      // the server sends no charset, which mangles every non-ASCII script the
-      // language instruction above may have asked for.
-      final responseData =
-          jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
-      final responseText = isCloud
-          ? (responseData['choices'][0]['message']['content'] as String)
-          : (responseData['response'] as String);
 
       final parsed = jsonDecode(responseText) as Map<String, dynamic>;
 
@@ -211,5 +216,48 @@ $transcript''';
         summary: 'Summary generation failed: ${e.toString()}',
       );
     }
+  }
+
+  /// POSTs a chat-completion [body] to Groq directly when the user brought their
+  /// own [apiKey], otherwise to the Supabase Edge Function proxy that holds the
+  /// key server-side. Returns the decoded JSON response.
+  Future<Map<String, dynamic>> _cloudChat(
+    Map<String, dynamic> body,
+    String? apiKey,
+  ) async {
+    final byok = apiKey != null && apiKey.isNotEmpty;
+    final uri = byok ? Uri.parse(_groqUrl) : _functionUri('groq-chat');
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      if (byok) 'Authorization': 'Bearer $apiKey' else ..._functionHeaders(),
+    };
+
+    final response = await http
+        .post(uri, headers: headers, body: jsonEncode(body))
+        .timeout(const Duration(minutes: 3));
+
+    if (response.statusCode != 200) {
+      throw Exception('API error: ${response.statusCode} - ${response.body}');
+    }
+
+    // Decode as UTF-8 explicitly: `response.body` falls back to latin-1 when
+    // the server sends no charset, which mangles every non-ASCII script the
+    // language instruction may have asked for.
+    return jsonDecode(utf8.decode(response.bodyBytes)) as Map<String, dynamic>;
+  }
+
+  Uri _functionUri(String name) {
+    final base = dotenv.env['SUPABASE_URL'];
+    if (base == null || base.isEmpty) {
+      throw Exception('SUPABASE_URL is not set; cannot reach the AI proxy.');
+    }
+    return Uri.parse('$base/functions/v1/$name');
+  }
+
+  Map<String, String> _functionHeaders() {
+    final anon = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+    final token =
+        Supabase.instance.client.auth.currentSession?.accessToken ?? anon;
+    return {'Authorization': 'Bearer $token', 'apikey': anon};
   }
 }

@@ -75,8 +75,11 @@ class MiniPlayer extends StatelessWidget {
                     width: 44,
                     height: 44,
                     decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF1A8C7E), Color(0xFF2DB5A5)],
+                      gradient: LinearGradient(
+                        colors: [
+                          context.appPrimary,
+                          Color.lerp(context.appPrimary, Colors.white, 0.18)!,
+                        ],
                         begin: Alignment.topLeft,
                         end: Alignment.bottomRight,
                       ),

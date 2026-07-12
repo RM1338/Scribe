@@ -64,12 +64,13 @@ class ScribeApp extends StatelessWidget {
 
     final settings = context.watch<SettingsProvider>();
     final themeMode = _getThemeMode(settings.themeMode);
+    final accent = settings.userColor;
 
     return MaterialApp(
       title: 'Scribe',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.light,
-      darkTheme: AppTheme.dark,
+      theme: AppTheme.light(accent),
+      darkTheme: AppTheme.dark(accent),
       themeMode: themeMode,
       themeAnimationDuration: const Duration(milliseconds: 300),
       themeAnimationCurve: Curves.easeInOut,

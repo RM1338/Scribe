@@ -194,6 +194,8 @@ class _DetailScreenState extends State<DetailScreen>
           PopupMenuButton<String>(
             color: context.appSurface,
             surfaceTintColor: Colors.transparent,
+            position: PopupMenuPosition.under,
+            offset: const Offset(0, 8),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(14),
             ),
@@ -272,7 +274,17 @@ class _DetailScreenState extends State<DetailScreen>
             ),
           ),
         if (summary != null && summary.isNotEmpty)
-          _buildSummaryCard(context, 'Smart Summary', Icons.lightbulb, summary),
+          _buildSummaryCard(
+            context,
+            'Smart Summary',
+            Icons.lightbulb,
+            summary,
+            // Editing writes the original summary, so only offer it while the
+            // original is the thing on screen.
+            onEdit: _viewLanguageCode == null
+                ? () => _editSummary(live, provider)
+                : null,
+          ),
         if (actionItems.isNotEmpty) ...[
           const SizedBox(height: 16),
           _buildActionItemsCard(context, live, actionItems, provider),
@@ -305,8 +317,9 @@ class _DetailScreenState extends State<DetailScreen>
     BuildContext context,
     String title,
     IconData icon,
-    String text,
-  ) {
+    String text, {
+    VoidCallback? onEdit,
+  }) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -326,6 +339,10 @@ class _DetailScreenState extends State<DetailScreen>
               Icon(icon, color: context.appPrimary, size: 20),
               const SizedBox(width: 8),
               Text(title, style: context.sectionTitle),
+              if (onEdit != null) ...[
+                const Spacer(),
+                _EditButton(onTap: onEdit),
+              ],
             ],
           ),
           const SizedBox(height: 16),
@@ -492,7 +509,14 @@ class _DetailScreenState extends State<DetailScreen>
     MeetingProvider provider,
   ) {
     if (live.segments.isEmpty) {
-      if (live.transcript != null && live.transcript!.isNotEmpty) {
+      final transcript = live.transcript;
+      // A failed run stores its error in the transcript field; treat that as
+      // "no transcript" so the retry state shows instead of the error text.
+      final failed =
+          transcript != null && transcript.startsWith('Transcription failed');
+      final hasText = transcript != null && transcript.isNotEmpty && !failed;
+
+      if (hasText) {
         return ListView(
           padding: const EdgeInsets.fromLTRB(20, 0, 20, 100),
           children: [
@@ -507,25 +531,35 @@ class _DetailScreenState extends State<DetailScreen>
                   width: 0.5,
                 ),
               ),
-              child: Text(
-                live.transcript!,
-                style: GoogleFonts.manrope(
-                  color: context.appTextPrimary,
-                  fontSize: 15,
-                  height: 1.6,
-                ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: _EditButton(
+                      onTap: () => _editTranscriptText(live, provider),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    transcript,
+                    style: GoogleFonts.manrope(
+                      color: context.appTextPrimary,
+                      fontSize: 15,
+                      height: 1.6,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
         );
       }
-      return Center(
-        child: Text(
-          provider.currentProcessingId == live.id
-              ? 'Transcribing…'
-              : 'No transcript available.',
-          style: GoogleFonts.manrope(color: context.appTextSecondary),
-        ),
+      return _buildTranscriptEmptyState(
+        context,
+        live,
+        provider,
+        failed: failed,
       );
     }
 
@@ -534,9 +568,34 @@ class _DetailScreenState extends State<DetailScreen>
     // without SyncedTranscript knowing translation exists.
     final segments = live.segmentsIn(_viewLanguageCode);
 
+    // Editing writes the original segment text, so line editing is offered only
+    // while the original transcript is showing -- not over a translation.
+    final canEdit = _viewLanguageCode == null;
+
     return Column(
       children: [
         _buildTranslationBar(context, live, provider),
+        if (canEdit)
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            child: Row(
+              children: [
+                Icon(
+                  Icons.edit_outlined,
+                  size: 13,
+                  color: context.appTextTertiary,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Long-press a line to edit',
+                  style: GoogleFonts.manrope(
+                    color: context.appTextTertiary,
+                    fontSize: 12,
+                  ),
+                ),
+              ],
+            ),
+          ),
         Expanded(
           child: SyncedTranscript(
             // Rebuild the list from scratch when the language flips, rather
@@ -546,6 +605,9 @@ class _DetailScreenState extends State<DetailScreen>
             position: provider.position,
             density: TranscriptDensity.compact,
             onSeek: (to) => _seekWithin(provider, live, to),
+            onEditLine: canEdit
+                ? (index) => _editSegment(live, provider, index)
+                : null,
             headerBuilder: (context, segment, _) => _buildSpeakerHeader(
               context,
               live.id,
@@ -556,6 +618,88 @@ class _DetailScreenState extends State<DetailScreen>
           ),
         ),
       ],
+    );
+  }
+
+  /// Shown when a recording has no usable transcript. While it's processing,
+  /// just says so; otherwise offers to (re)run transcription as long as the
+  /// audio is still on disk.
+  Widget _buildTranscriptEmptyState(
+    BuildContext context,
+    Meeting live,
+    MeetingProvider provider, {
+    required bool failed,
+  }) {
+    if (provider.currentProcessingId == live.id) {
+      return Center(
+        child: Text(
+          'Transcribing…',
+          style: GoogleFonts.manrope(color: context.appTextSecondary),
+        ),
+      );
+    }
+
+    final canRetry = live.audioFilePath != null;
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 40),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              failed ? Icons.error_outline_rounded : Icons.description_outlined,
+              size: 44,
+              color: context.appTextTertiary,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              failed ? "Transcription didn't finish." : 'No transcript yet.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.manrope(
+                color: context.appTextPrimary,
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              canRetry
+                  ? 'The audio is still saved — you can run transcription again.'
+                  : 'No audio file is available for this recording.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.manrope(
+                color: context.appTextSecondary,
+                fontSize: 13,
+                height: 1.5,
+              ),
+            ),
+            if (canRetry) ...[
+              const SizedBox(height: 20),
+              ElevatedButton.icon(
+                onPressed: () => provider.retryTranscription(live.id),
+                icon: const Icon(Icons.refresh_rounded, size: 20),
+                label: Text(
+                  'Retry transcription',
+                  style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: context.appPrimary,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
@@ -881,22 +1025,22 @@ class _DetailScreenState extends State<DetailScreen>
               var progress = 0.0;
               var currentPos = Duration.zero;
 
-              if (isPlayingThis && total > 0) {
-                if (_dragProgress != null) {
-                  progress = _dragProgress!;
-                  currentPos = Duration(
-                    milliseconds: (_dragProgress! * total).toInt(),
-                  );
-                } else {
-                  progress = playhead.inMilliseconds / total;
-                  currentPos = playhead;
-                }
+              if (_dragProgress != null) {
+                progress = _dragProgress!;
+                currentPos = Duration(
+                  milliseconds: (_dragProgress! * total).toInt(),
+                );
+              } else if (isPlayingThis && total > 0) {
+                progress = playhead.inMilliseconds / total;
+                currentPos = playhead;
               }
 
               return Row(
                 children: [
                   Text(
-                    isPlayingThis ? _formatDuration(currentPos) : '00:00',
+                    (_dragProgress != null || isPlayingThis)
+                        ? _formatDuration(currentPos)
+                        : '00:00',
                     style: GoogleFonts.manrope(
                       color: context.appTextTertiary,
                       fontSize: 11,
@@ -909,28 +1053,37 @@ class _DetailScreenState extends State<DetailScreen>
                       data: SliderThemeData(
                         trackHeight: 4,
                         thumbShape: const RoundSliderThumbShape(
-                          enabledThumbRadius: 0,
-                        ), // No thumb
-                        overlayShape: SliderComponentShape.noOverlay,
+                          enabledThumbRadius: 7,
+                        ),
+                        overlayShape: const RoundSliderOverlayShape(
+                          overlayRadius: 15,
+                        ),
+                        thumbColor: context.appPrimary,
                         activeTrackColor: context.appPrimary,
                         inactiveTrackColor: context.appSeparator,
                       ),
                       child: Slider(
                         value: progress.clamp(0.0, 1.0),
-                        onChanged: (v) {
-                          if (isPlayingThis) {
-                            setState(() {
-                              _dragProgress = v;
-                            });
+                        // Grabbing the scrubber on a track that isn't loaded yet
+                        // loads it first, so you can seek without pressing play.
+                        onChangeStart: (_) {
+                          if (provider.currentlyPlayingId != live.id) {
+                            provider.playMeeting(live);
                           }
+                        },
+                        onChanged: (v) {
+                          setState(() {
+                            _dragProgress = v;
+                          });
                         },
                         onChangeEnd: (v) {
                           setState(() {
                             _dragProgress = null;
                           });
-                          if (isPlayingThis) {
+                          final totalMs = provider.totalDuration.inMilliseconds;
+                          if (totalMs > 0) {
                             provider.seek(
-                              Duration(milliseconds: (v * total).toInt()),
+                              Duration(milliseconds: (v * totalMs).toInt()),
                             );
                           }
                         },
@@ -960,6 +1113,104 @@ class _DetailScreenState extends State<DetailScreen>
       return '${d.inHours}:${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
     }
     return '${d.inMinutes.remainder(60).toString().padLeft(2, '0')}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _editSummary(Meeting live, MeetingProvider provider) async {
+    final edited = await _showEditTextDialog(
+      title: 'Edit Summary',
+      initial: live.summary ?? '',
+      hint: 'Summary',
+    );
+    if (edited != null) provider.updateSummary(live.id, edited);
+  }
+
+  Future<void> _editSegment(
+    Meeting live,
+    MeetingProvider provider,
+    int index,
+  ) async {
+    if (index < 0 || index >= live.segments.length) return;
+    final edited = await _showEditTextDialog(
+      title: 'Edit Line',
+      initial: live.segments[index].text.trim(),
+      hint: 'Transcript text',
+    );
+    if (edited != null) provider.editTranscriptSegment(live.id, index, edited);
+  }
+
+  Future<void> _editTranscriptText(
+    Meeting live,
+    MeetingProvider provider,
+  ) async {
+    final edited = await _showEditTextDialog(
+      title: 'Edit Transcript',
+      initial: live.transcript ?? '',
+      hint: 'Transcript',
+    );
+    if (edited != null) provider.editTranscriptText(live.id, edited);
+  }
+
+  /// Shared multiline editor for the summary and transcript. Returns the new
+  /// text, or null if dismissed. Provider-side setters ignore an unchanged or
+  /// emptied value, so callers don't re-check.
+  Future<String?> _showEditTextDialog({
+    required String title,
+    required String initial,
+    required String hint,
+  }) async {
+    final controller = TextEditingController(text: initial);
+    return showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: context.appSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          title,
+          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
+        ),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          maxLines: null,
+          minLines: 4,
+          textCapitalization: TextCapitalization.sentences,
+          style: GoogleFonts.manrope(
+            color: context.appTextPrimary,
+            height: 1.5,
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: GoogleFonts.manrope(color: context.appTextTertiary),
+            filled: true,
+            fillColor: context.appSurfaceVariant,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(color: context.appPrimary, width: 1.5),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.manrope()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: Text(
+              'Save',
+              style: GoogleFonts.manrope(
+                color: context.appPrimary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   // Dialogs from previous implementation remain identical
@@ -1049,79 +1300,111 @@ class _DetailScreenState extends State<DetailScreen>
     MeetingProvider provider,
     Meeting meeting,
   ) {
+    final live = provider.allMeetings.firstWhere(
+      (m) => m.id == meeting.id,
+      orElse: () => meeting,
+    );
+    final selected = <String>{...live.folderIds};
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: context.appSurface,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text(
-          'Move to Folder',
-          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
-        ),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: const Icon(Icons.folder_off_outlined),
-                title: Text(
-                  'None (Remove from folder)',
-                  style: GoogleFonts.manrope(),
-                ),
-                onTap: () {
-                  provider.moveMeetingToFolder(meeting.id, null);
-                  Navigator.pop(context);
-                },
-              ),
-              const Divider(),
-              ...provider.folders.map(
-                (folder) => ListTile(
-                  leading: Icon(
-                    Icons.folder_rounded,
-                    color: Color(folder.colorValue),
-                  ),
-                  title: Text(folder.name, style: GoogleFonts.manrope()),
-                  onTap: () {
-                    provider.moveMeetingToFolder(meeting.id, folder.id);
-                    Navigator.pop(context);
-                  },
-                ),
-              ),
-              if (provider.folders.isEmpty)
-                Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 8),
-                  child: Text(
-                    'No folders created yet.',
-                    style: GoogleFonts.manrope(color: context.appTextTertiary),
-                  ),
-                ),
-            ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          backgroundColor: context.appSurface,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
           ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showCreateFolderDialog(context, provider);
-            },
-            child: Text(
-              'New Folder',
-              style: GoogleFonts.manrope(color: context.appPrimary),
+          title: Text(
+            'Move to Folder',
+            style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
+          ),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: provider.folders.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'No folders created yet.',
+                      style: GoogleFonts.manrope(
+                        color: context.appTextTertiary,
+                      ),
+                    ),
+                  )
+                : ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 320),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: provider.folders.map((folder) {
+                          return CheckboxListTile(
+                            value: selected.contains(folder.id),
+                            onChanged: (v) => setState(() {
+                              if (v == true) {
+                                selected.add(folder.id);
+                              } else {
+                                selected.remove(folder.id);
+                              }
+                            }),
+                            activeColor: context.appPrimary,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            secondary: Icon(
+                              Icons.folder_rounded,
+                              color: Color(folder.colorValue),
+                            ),
+                            title: Text(
+                              folder.name,
+                              style: GoogleFonts.manrope(),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                // Keep this dialog open; create the folder on top of it, then
+                // tick it so the user can keep choosing folders.
+                final newId = await _showCreateFolderDialog(context, provider);
+                if (newId != null) setState(() => selected.add(newId));
+              },
+              child: Text(
+                'New Folder',
+                style: GoogleFonts.manrope(color: context.appPrimary),
+              ),
             ),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Close', style: GoogleFonts.manrope()),
-          ),
-        ],
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel', style: GoogleFonts.manrope()),
+            ),
+            TextButton(
+              onPressed: () {
+                provider.setMeetingFolders(meeting.id, selected.toList());
+                Navigator.pop(context);
+              },
+              child: Text(
+                'Save',
+                style: GoogleFonts.manrope(
+                  color: context.appPrimary,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  void _showCreateFolderDialog(BuildContext context, MeetingProvider provider) {
+  /// Shows the create-folder prompt and returns the new folder's id, or null if
+  /// the user cancelled.
+  Future<String?> _showCreateFolderDialog(
+    BuildContext context,
+    MeetingProvider provider,
+  ) {
     final controller = TextEditingController();
-    showDialog(
+    return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: context.appSurface,
@@ -1151,13 +1434,13 @@ class _DetailScreenState extends State<DetailScreen>
             child: Text('Cancel', style: GoogleFonts.manrope()),
           ),
           TextButton(
-            onPressed: () {
-              if (controller.text.isNotEmpty) {
-                provider.createFolder(
-                  controller.text,
+            onPressed: () async {
+              if (controller.text.trim().isNotEmpty) {
+                final id = await provider.createFolder(
+                  controller.text.trim(),
                   context.appPrimary.toARGB32(),
                 );
-                Navigator.pop(context);
+                if (context.mounted) Navigator.pop(context, id);
               }
             },
             child: Text(
@@ -1362,6 +1645,40 @@ class _ProcessingCard extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Small "Edit" pill used on the summary and plain-transcript cards. Kept low-key
+/// so it reads as a secondary affordance next to the AI-generated content.
+class _EditButton extends StatelessWidget {
+  const _EditButton({required this.onTap});
+
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.edit_outlined, size: 15, color: context.appPrimary),
+            const SizedBox(width: 4),
+            Text(
+              'Edit',
+              style: GoogleFonts.manrope(
+                color: context.appPrimary,
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

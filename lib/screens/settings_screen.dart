@@ -138,30 +138,14 @@ class SettingsScreen extends StatelessWidget {
           // 4. APPEARANCE
           _buildSectionHeader('APPEARANCE', textSecondary),
           _buildSettingsGroup([
-            _buildSelectionTile(
-              title: 'System Default',
-              icon: Icons.settings_system_daydream_rounded,
-              isSelected: settings.themeMode == ThemeModeOption.system,
-              onTap: () => settings.themeMode = ThemeModeOption.system,
-              teal: scribeTeal,
-              textColor: textPrimary,
-              dividerColor: dividerColor,
-            ),
-            _buildSelectionTile(
-              title: 'Light Mode',
-              icon: Icons.light_mode_rounded,
-              isSelected: settings.themeMode == ThemeModeOption.light,
-              onTap: () => settings.themeMode = ThemeModeOption.light,
-              teal: scribeTeal,
-              textColor: textPrimary,
-              dividerColor: dividerColor,
-            ),
-            _buildSelectionTile(
-              title: 'Dark Mode',
+            _buildToggleTile(
               icon: Icons.dark_mode_rounded,
-              isSelected: settings.themeMode == ThemeModeOption.dark,
-              onTap: () => settings.themeMode = ThemeModeOption.dark,
-              teal: scribeTeal,
+              title: 'Dark Mode',
+              subtitle: 'Switch between light and dark',
+              value: Theme.of(context).brightness == Brightness.dark,
+              onChanged: (v) => settings.themeMode =
+                  v ? ThemeModeOption.dark : ThemeModeOption.light,
+              iconColor: scribeTeal,
               textColor: textPrimary,
               dividerColor: null,
             ),
@@ -199,13 +183,24 @@ class SettingsScreen extends StatelessWidget {
                   trailing: _formatBytes(totalBytes),
                   iconColor: scribeTeal,
                   textColor: textPrimary,
-                  dividerColor: null,
+                  dividerColor: dividerColor,
                   onTap: () => showDialog(
                     context: context,
                     builder: (c) => const SelectiveClearDialog(),
                   ),
                 );
               },
+            ),
+            _buildSettingsTile(
+              icon: Icons.key_rounded,
+              title: 'Groq API Key',
+              subtitle: 'Use your own key instead of the shared server',
+              trailing: settings.hasUserApiKey ? 'Personal' : 'Default',
+              trailingColor: settings.hasUserApiKey ? scribeTeal : null,
+              iconColor: scribeTeal,
+              textColor: textPrimary,
+              dividerColor: null,
+              onTap: () => _showApiKeyDialog(context, settings),
             ),
           ], surfaceColor),
           const SizedBox(height: 40),
@@ -272,6 +267,106 @@ class SettingsScreen extends StatelessWidget {
     if (confirmed == true) {
       await auth.signOut();
     }
+  }
+
+  void _showApiKeyDialog(BuildContext context, SettingsProvider settings) {
+    final controller = TextEditingController();
+    final hadKey = settings.hasUserApiKey;
+
+    showDialog(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) {
+          final canSave = controller.text.trim().isNotEmpty;
+          return AlertDialog(
+            backgroundColor: context.appSurface,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            title: Text(
+              'Groq API Key',
+              style: GoogleFonts.manrope(
+                fontWeight: FontWeight.w700,
+                color: context.appTextPrimary,
+              ),
+            ),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  hadKey
+                      ? 'A personal key is set — transcription and summaries use your own Groq account. Enter a new key to replace it, or remove it to go back to the shared server.'
+                      : 'By default, Scribe uses a secure shared server for AI. Paste your own Groq API key to use your own account and quota instead. Get one at console.groq.com.',
+                  style: GoogleFonts.manrope(
+                    color: context.appTextSecondary,
+                    fontSize: 13,
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: controller,
+                  autofocus: true,
+                  obscureText: true,
+                  onChanged: (_) => setState(() {}),
+                  style: GoogleFonts.manrope(color: context.appTextPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'gsk_...',
+                    hintStyle: GoogleFonts.manrope(
+                      color: context.appTextSecondary.withValues(alpha: 0.5),
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              if (hadKey)
+                TextButton(
+                  onPressed: () {
+                    settings.groqApiKey = '';
+                    Navigator.pop(context);
+                  },
+                  child: Text(
+                    'Remove',
+                    style: GoogleFonts.manrope(
+                      color: AppColors.recordRed,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: Text(
+                  'Cancel',
+                  style: GoogleFonts.manrope(color: context.appTextSecondary),
+                ),
+              ),
+              TextButton(
+                onPressed: canSave
+                    ? () {
+                        settings.groqApiKey = controller.text.trim();
+                        Navigator.pop(context);
+                      }
+                    : null,
+                child: Text(
+                  'Save',
+                  style: GoogleFonts.manrope(
+                    color: canSave
+                        ? context.appPrimary
+                        : context.appTextSecondary.withValues(alpha: 0.5),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
   }
 
   void _showPrivacyDialog(BuildContext context) {
@@ -624,65 +719,6 @@ class SettingsScreen extends StatelessWidget {
           ),
         ),
         if (dividerColor != null)
-          Divider(
-            height: 1,
-            indent: 72,
-            endIndent: 16,
-            color: dividerColor.withValues(alpha: 0.5),
-          ),
-      ],
-    );
-  }
-
-  Widget _buildSelectionTile({
-    required String title,
-    required IconData icon,
-    required bool isSelected,
-    required VoidCallback onTap,
-    required Color teal,
-    required Color textColor,
-    required Color? dividerColor,
-  }) {
-    return Column(
-      children: [
-        ListTile(
-          contentPadding: const EdgeInsets.symmetric(
-            horizontal: 16,
-            vertical: 6,
-          ),
-          mouseCursor: SystemMouseCursors.basic,
-          tileColor: isSelected
-              ? teal.withValues(alpha: 0.1)
-              : Colors.transparent,
-          shape: isSelected ? const StadiumBorder() : null,
-          hoverColor: Colors.transparent,
-          splashColor: Colors.transparent,
-          focusColor: Colors.transparent,
-          leading: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: isSelected
-                  ? Colors.transparent
-                  : teal.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: teal, size: 20),
-          ),
-          title: Text(
-            title,
-            style: GoogleFonts.manrope(
-              color: isSelected ? teal : textColor,
-              fontSize: 16,
-              fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-            ),
-          ),
-          trailing: isSelected
-              ? Icon(Icons.check_circle_rounded, color: teal, size: 24)
-              : null,
-          onTap: onTap,
-        ),
-        if (dividerColor != null && !isSelected)
           Divider(
             height: 1,
             indent: 72,

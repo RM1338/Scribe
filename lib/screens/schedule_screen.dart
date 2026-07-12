@@ -526,8 +526,8 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     Container(
                       width: 8,
                       height: 8,
-                      decoration: const BoxDecoration(
-                        color: Color(0xFF1A8C7E),
+                      decoration: BoxDecoration(
+                        color: context.appPrimary,
                         shape: BoxShape.circle,
                       ),
                     ),
@@ -535,7 +535,7 @@ class _ScheduleScreenState extends State<ScheduleScreen> {
                     Text(
                       status,
                       style: GoogleFonts.manrope(
-                        color: const Color(0xFF1A8C7E),
+                        color: context.appPrimary,
                         fontSize: 12,
                         fontWeight: FontWeight.bold,
                       ),

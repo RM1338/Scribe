@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/settings_provider.dart';
@@ -26,6 +27,7 @@ class ProfileAvatar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final settings = context.watch<SettingsProvider>();
+    final avatarPath = settings.userAvatarPath;
 
     return Semantics(
       button: true,
@@ -37,13 +39,18 @@ class ProfileAvatar extends StatelessWidget {
         child: CircleAvatar(
           radius: radius,
           backgroundColor: settings.userColor,
-          child: Text(
-            settings.userInitial,
-            style: AppText.cardTitle.copyWith(
-              color: Colors.white,
-              fontSize: radius * 0.85,
-            ),
-          ),
+          backgroundImage: avatarPath != null
+              ? FileImage(File(avatarPath))
+              : null,
+          child: avatarPath == null
+              ? Text(
+                  settings.userInitial,
+                  style: AppText.cardTitle.copyWith(
+                    color: Colors.white,
+                    fontSize: radius * 0.85,
+                  ),
+                )
+              : null,
         ),
       ),
     );

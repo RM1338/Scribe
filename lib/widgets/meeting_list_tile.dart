@@ -5,28 +5,41 @@ import '../theme/app_theme.dart';
 import '../providers/meeting_provider.dart';
 import '../models/meeting.dart';
 import '../screens/detail_screen.dart';
+import '../screens/note_editor_screen.dart';
 
 class MeetingListTile extends StatelessWidget {
   final Meeting meeting;
   final VoidCallback? onFavoriteToggle;
   final VoidCallback? onDelete;
 
+  /// When set, adds a "Remove from folder" menu item. Used in the Folders tab
+  /// to pull a meeting out of the folder it's listed under, without deleting it.
+  final VoidCallback? onRemoveFromFolder;
+
   const MeetingListTile({
     super.key,
     required this.meeting,
     this.onFavoriteToggle,
     this.onDelete,
+    this.onRemoveFromFolder,
   });
 
   @override
   Widget build(BuildContext context) {
-    bool isTranscribed = meeting.status == MeetingStatus.transcribed;
-    String statusText = isTranscribed ? 'TRANSCRIBED' : 'PROCESSING';
+    final bool isNote = meeting.isNote;
+    final bool isTranscribed = meeting.status == MeetingStatus.transcribed;
+    final String statusText = isNote
+        ? 'NOTE'
+        : (isTranscribed ? 'TRANSCRIBED' : 'PROCESSING');
 
     return GestureDetector(
       onTap: () {
         Navigator.of(context).push(
-          MaterialPageRoute(builder: (_) => DetailScreen(meeting: meeting)),
+          MaterialPageRoute(
+            builder: (_) => isNote
+                ? NoteEditorScreen(note: meeting)
+                : DetailScreen(meeting: meeting),
+          ),
         );
       },
       child: Container(
@@ -71,66 +84,89 @@ class MeetingListTile extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.access_time_rounded,
-                        size: 14,
+                  if (isNote)
+                    Text(
+                      (meeting.notes?.trim().isNotEmpty ?? false)
+                          ? meeting.notes!.trim()
+                          : 'Empty note',
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
                         color: context.appTextSecondary,
+                        fontSize: 13,
+                        height: 1.4,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        meeting.duration,
-                        style: TextStyle(
+                    )
+                  else
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.access_time_rounded,
+                          size: 14,
                           color: context.appTextSecondary,
-                          fontSize: 13,
                         ),
-                      ),
-                      if (meeting.speakerMapping.isNotEmpty) ...[
-                        const SizedBox(width: 12),
-                        SizedBox(
-                          width: 40,
-                          height: 20,
-                          child: Stack(
-                            children: [
-                              Positioned(
-                                left: 0,
-                                child: CircleAvatar(
-                                  radius: 10,
-                                  backgroundColor: context.appPrimaryLight,
-                                  child: Text(
-                                    meeting.speakerMapping.values.first[0]
-                                        .toUpperCase(),
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      color: context.appPrimary,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                              if (meeting.speakerMapping.length > 1)
+                        const SizedBox(width: 4),
+                        Text(
+                          meeting.duration,
+                          style: TextStyle(
+                            color: context.appTextSecondary,
+                            fontSize: 13,
+                          ),
+                        ),
+                        if (meeting.notes?.isNotEmpty ?? false) ...[
+                          const SizedBox(width: 12),
+                          Icon(
+                            Icons.sticky_note_2_outlined,
+                            size: 14,
+                            color: context.appPrimary,
+                          ),
+                        ],
+                        if (meeting.speakerMapping.isNotEmpty) ...[
+                          const SizedBox(width: 12),
+                          SizedBox(
+                            width: 40,
+                            height: 20,
+                            child: Stack(
+                              children: [
                                 Positioned(
-                                  left: 14,
+                                  left: 0,
                                   child: CircleAvatar(
                                     radius: 10,
-                                    backgroundColor: context.appSurfaceVariant,
+                                    backgroundColor: context.appPrimaryLight,
                                     child: Text(
-                                      meeting.speakerMapping.values
-                                          .elementAt(1)[0]
+                                      meeting.speakerMapping.values.first[0]
                                           .toUpperCase(),
                                       style: TextStyle(
                                         fontSize: 10,
-                                        color: context.appTextPrimary,
+                                        color: context.appPrimary,
                                       ),
                                     ),
                                   ),
                                 ),
-                            ],
+                                if (meeting.speakerMapping.length > 1)
+                                  Positioned(
+                                    left: 14,
+                                    child: CircleAvatar(
+                                      radius: 10,
+                                      backgroundColor:
+                                          context.appSurfaceVariant,
+                                      child: Text(
+                                        meeting.speakerMapping.values
+                                            .elementAt(1)[0]
+                                            .toUpperCase(),
+                                        style: TextStyle(
+                                          fontSize: 10,
+                                          color: context.appTextPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
                           ),
-                        ),
+                        ],
                       ],
-                    ],
-                  ),
+                    ),
                 ],
               ),
             ),
@@ -145,7 +181,7 @@ class MeetingListTile extends StatelessWidget {
                     vertical: 4,
                   ),
                   decoration: BoxDecoration(
-                    color: isTranscribed
+                    color: (isTranscribed && !isNote)
                         ? context.appPrimary
                         : context.appSurfaceVariant,
                     borderRadius: BorderRadius.circular(20),
@@ -153,7 +189,7 @@ class MeetingListTile extends StatelessWidget {
                   child: Text(
                     statusText,
                     style: GoogleFonts.manrope(
-                      color: isTranscribed
+                      color: (isTranscribed && !isNote)
                           ? Colors.white
                           : context.appTextPrimary,
                       fontSize: 10,
@@ -167,6 +203,8 @@ class MeetingListTile extends StatelessWidget {
                   builder: (context, provider, _) => PopupMenuButton<String>(
                     color: context.appSurface,
                     surfaceTintColor: Colors.transparent,
+                    position: PopupMenuPosition.under,
+                    offset: const Offset(0, 8),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -188,6 +226,14 @@ class MeetingListTile extends StatelessWidget {
                         value: 'rename',
                         child: Text('Rename', style: GoogleFonts.manrope()),
                       ),
+                      if (onRemoveFromFolder != null)
+                        PopupMenuItem(
+                          value: 'remove_from_folder',
+                          child: Text(
+                            'Remove from folder',
+                            style: GoogleFonts.manrope(),
+                          ),
+                        ),
                       PopupMenuItem(
                         value: 'delete',
                         child: Text(
@@ -206,6 +252,8 @@ class MeetingListTile extends StatelessWidget {
                         );
                         if (newTitle != null)
                           provider.renameMeeting(meeting.id, newTitle);
+                      } else if (value == 'remove_from_folder') {
+                        onRemoveFromFolder?.call();
                       } else if (value == 'delete') {
                         final confirm = await _showDeleteConfirm(context);
                         if (confirm == true && onDelete != null) onDelete!();
@@ -233,7 +281,10 @@ class MeetingListTile extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Rename',
-          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w700,
+            color: context.appTextPrimary,
+          ),
         ),
         content: TextField(
           controller: controller,
@@ -282,7 +333,10 @@ class MeetingListTile extends StatelessWidget {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
         title: Text(
           'Delete Meeting?',
-          style: GoogleFonts.manrope(fontWeight: FontWeight.w700),
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w700,
+            color: context.appTextPrimary,
+          ),
         ),
         content: Text(
           'This action cannot be undone.',

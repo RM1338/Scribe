@@ -85,6 +85,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                       PopupMenuButton<String>(
                         color: context.appSurface,
                         surfaceTintColor: Colors.transparent,
+                        position: PopupMenuPosition.under,
+                        offset: const Offset(0, 8),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
                         ),
@@ -159,8 +161,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             width: 280,
                             height: 280,
                             decoration: BoxDecoration(
-                              gradient: const LinearGradient(
-                                colors: [Color(0xFF1A8C7E), Color(0xFF2DB5A5)],
+                              gradient: LinearGradient(
+                                colors: [
+                                  context.appPrimary,
+                                  Color.lerp(
+                                    context.appPrimary,
+                                    Colors.white,
+                                    0.18,
+                                  )!,
+                                ],
                                 begin: Alignment.topLeft,
                                 end: Alignment.bottomRight,
                               ),
@@ -245,9 +254,9 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                     thumbShape: const RoundSliderThumbShape(
                                       enabledThumbRadius: 6,
                                     ),
-                                    activeTrackColor: context.appTextPrimary,
+                                    activeTrackColor: context.appPrimary,
                                     inactiveTrackColor: context.appSeparator,
-                                    thumbColor: context.appTextPrimary,
+                                    thumbColor: context.appPrimary,
                                     overlayShape:
                                         SliderComponentShape.noOverlay,
                                   ),
@@ -322,7 +331,7 @@ class _PlayerScreenState extends State<PlayerScreen> {
                                 width: 64,
                                 height: 64,
                                 decoration: BoxDecoration(
-                                  color: context.appTextPrimary,
+                                  color: context.appPrimary,
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
@@ -359,6 +368,8 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             PopupMenuButton<double>(
                               color: context.appSurface,
                               surfaceTintColor: Colors.transparent,
+                              position: PopupMenuPosition.under,
+                              offset: const Offset(0, 8),
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(16),
                               ),
@@ -424,15 +435,15 @@ class _PlayerScreenState extends State<PlayerScreen> {
                             ),
                             IconButton(
                               icon: Icon(
-                                widget.meeting.isFavorite
+                                live.isFavorite
                                     ? Icons.bookmark_rounded
                                     : Icons.bookmark_outline_rounded,
                               ),
-                              color: widget.meeting.isFavorite
+                              color: live.isFavorite
                                   ? context.appPrimary
                                   : context.appTextSecondary,
                               onPressed: () =>
-                                  provider.toggleFavorite(widget.meeting.id),
+                                  provider.toggleFavorite(live.id),
                             ),
                             IconButton(
                               icon: Icon(Icons.text_snippet_outlined),
@@ -516,69 +527,93 @@ class _PlayerScreenState extends State<PlayerScreen> {
     MeetingProvider provider,
     Meeting meeting,
   ) {
+    final live = provider.allMeetings.firstWhere(
+      (m) => m.id == meeting.id,
+      orElse: () => meeting,
+    );
+    final selected = <String>{...live.folderIds};
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Text('Move to Folder'),
-        content: SizedBox(
-          width: double.maxFinite,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                leading: Icon(Icons.folder_off_outlined),
-                title: Text('None (Remove from folder)'),
-                onTap: () {
-                  provider.moveMeetingToFolder(meeting.id, null);
-                  Navigator.pop(context);
-                },
-              ),
-              Divider(),
-              ...provider.folders.map(
-                (folder) => ListTile(
-                  leading: Icon(
-                    Icons.folder_rounded,
-                    color: Color(folder.colorValue),
-                  ),
-                  title: Text(folder.name),
-                  onTap: () {
-                    provider.moveMeetingToFolder(meeting.id, folder.id);
-                    Navigator.pop(context);
-                  },
-                ),
-              ),
-              if (provider.folders.isEmpty)
-                Padding(
-                  padding: EdgeInsets.symmetric(vertical: 8),
-                  child: Text(
-                    'No folders created yet.',
-                    style: TextStyle(color: context.appTextTertiary),
-                  ),
-                ),
-            ],
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
+          title: Text('Move to Folder'),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: provider.folders.isEmpty
+                ? Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'No folders created yet.',
+                      style: TextStyle(color: context.appTextTertiary),
+                    ),
+                  )
+                : ConstrainedBox(
+                    constraints: const BoxConstraints(maxHeight: 320),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: provider.folders.map((folder) {
+                          return CheckboxListTile(
+                            value: selected.contains(folder.id),
+                            onChanged: (v) => setState(() {
+                              if (v == true) {
+                                selected.add(folder.id);
+                              } else {
+                                selected.remove(folder.id);
+                              }
+                            }),
+                            activeColor: context.appPrimary,
+                            controlAffinity: ListTileControlAffinity.leading,
+                            secondary: Icon(
+                              Icons.folder_rounded,
+                              color: Color(folder.colorValue),
+                            ),
+                            title: Text(folder.name),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                // Keep this dialog open; create the folder on top of it, then
+                // tick it so the user can keep choosing folders.
+                final newId = await _showCreateFolderDialog(context, provider);
+                if (newId != null) setState(() => selected.add(newId));
+              },
+              child: Text('New Folder'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                provider.setMeetingFolders(meeting.id, selected.toList());
+                Navigator.pop(context);
+              },
+              child: Text('Save'),
+            ),
+          ],
         ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showCreateFolderDialog(context, provider);
-            },
-            child: Text('New Folder'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text('Close'),
-          ),
-        ],
       ),
     );
   }
 
-  void _showCreateFolderDialog(BuildContext context, MeetingProvider provider) {
+  /// Shows the create-folder prompt and returns the new folder's id, or null if
+  /// the user cancelled.
+  Future<String?> _showCreateFolderDialog(
+    BuildContext context,
+    MeetingProvider provider,
+  ) {
     final controller = TextEditingController();
-    showDialog(
+    return showDialog<String>(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -594,13 +629,13 @@ class _PlayerScreenState extends State<PlayerScreen> {
             child: Text('Cancel'),
           ),
           TextButton(
-            onPressed: () {
-              if (controller.text.isNotEmpty) {
-                provider.createFolder(
-                  controller.text,
+            onPressed: () async {
+              if (controller.text.trim().isNotEmpty) {
+                final id = await provider.createFolder(
+                  controller.text.trim(),
                   context.appPrimary.toARGB32(),
                 );
-                Navigator.pop(context);
+                if (context.mounted) Navigator.pop(context, id);
               }
             },
             child: Text('Create'),

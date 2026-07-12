@@ -5,9 +5,11 @@ import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../providers/meeting_provider.dart';
 import '../models/meeting.dart';
+import '../models/folder.dart';
 import '../widgets/meeting_list_tile.dart';
 import '../widgets/create_menu.dart';
 import '../widgets/profile_avatar.dart';
+import '../widgets/update_banner.dart';
 
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({super.key});
@@ -110,6 +112,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
           body: Column(
             children: [
+              // Notifies the user when a newer build is on the website. Renders
+              // nothing unless an update is actually available.
+              const UpdateBanner(),
+
               // Search Bar
               Padding(
                 padding: const EdgeInsets.symmetric(
@@ -218,9 +224,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
     List<Meeting> allMeetings,
   ) {
     final folders = provider.folders;
-    final unfoldered = allMeetings.where((m) => m.folderId == null).toList();
 
-    if (folders.isEmpty && unfoldered.isEmpty) {
+    if (folders.isEmpty) {
       return Center(
         child: Text(
           'No folders yet. Create one from the + menu.',
@@ -234,76 +239,73 @@ class _LibraryScreenState extends State<LibraryScreen> {
       children: [
         ...folders.map((folder) {
           final folderMeetings = allMeetings
-              .where((m) => m.folderId == folder.id)
+              .where((m) => m.folderIds.contains(folder.id))
               .toList();
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            decoration: BoxDecoration(
-              color: context.appSurface,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: context.appShadowSubtle,
-            ),
-            child: Theme(
-              data: Theme.of(
-                context,
-              ).copyWith(dividerColor: Colors.transparent),
-              child: ExpansionTile(
-                leading: Icon(
-                  Icons.folder_rounded,
-                  color: Color(folder.colorValue),
-                ),
-                title: Text(folder.name, style: context.cardTitle),
-                subtitle: Text(
-                  '${folderMeetings.length} meeting${folderMeetings.length == 1 ? '' : 's'}',
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: context.appTextSecondary,
-                  ),
-                ),
-                children: folderMeetings.isEmpty
-                    ? [
-                        Padding(
-                          padding: const EdgeInsets.all(16),
-                          child: Text(
-                            'No meetings in this folder',
-                            style: TextStyle(color: context.appTextTertiary),
-                          ),
-                        ),
-                      ]
-                    : folderMeetings
-                          .map(
-                            (m) => MeetingListTile(
-                              meeting: m,
-                              onFavoriteToggle: () =>
-                                  provider.toggleFavorite(m.id),
-                              onDelete: () => provider.deleteMeeting(m.id),
-                            ),
-                          )
-                          .toList(),
-              ),
+          return _FolderTile(
+            folder: folder,
+            meetings: folderMeetings,
+            onToggleFavorite: provider.toggleFavorite,
+            onDeleteMeeting: provider.deleteMeeting,
+            onRemoveMeetingFromFolder: (meetingId) =>
+                provider.removeMeetingFromFolder(meetingId, folder.id),
+            onDeleteFolder: () => _confirmDeleteFolder(
+              context,
+              provider,
+              folder.id,
+              folder.name,
+              folderMeetings.length,
             ),
           );
         }),
-        if (unfoldered.isNotEmpty) ...[
-          Padding(
-            padding: const EdgeInsets.only(top: 8, bottom: 12, left: 4),
-            child: Text(
-              'UNFILED',
-              style: context.sectionLabel.copyWith(
-                color: context.appTextTertiary,
-              ),
-            ),
+      ],
+    );
+  }
+
+  Future<void> _confirmDeleteFolder(
+    BuildContext context,
+    MeetingProvider provider,
+    String folderId,
+    String folderName,
+    int meetingCount,
+  ) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: context.appSurface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Delete Folder?',
+          style: GoogleFonts.manrope(
+            fontWeight: FontWeight.w700,
+            color: context.appTextPrimary,
           ),
-          ...unfoldered.map(
-            (meeting) => MeetingListTile(
-              meeting: meeting,
-              onFavoriteToggle: () => provider.toggleFavorite(meeting.id),
-              onDelete: () => provider.deleteMeeting(meeting.id),
+        ),
+        content: Text(
+          meetingCount == 0
+              ? 'Delete "$folderName"? This cannot be undone.'
+              : 'Delete "$folderName"? The ${meetingCount == 1 ? 'meeting' : '$meetingCount meetings'} inside will be moved to Unfiled. This cannot be undone.',
+          style: GoogleFonts.manrope(color: context.appTextSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text('Cancel', style: GoogleFonts.manrope()),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: Text(
+              'Delete',
+              style: GoogleFonts.manrope(fontWeight: FontWeight.w600),
             ),
           ),
         ],
-      ],
+      ),
     );
+
+    if (confirmed == true) {
+      await provider.deleteFolder(folderId);
+    }
   }
 
   Widget _buildTab(String title, bool isSelected, BuildContext context) {
@@ -324,6 +326,108 @@ class _LibraryScreenState extends State<LibraryScreen> {
             fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
             fontSize: 14,
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// A collapsible folder row in the Folders tab. The delete affordance and the
+/// expand chevron live together in [ExpansionTile.trailing] so both stay
+/// vertically centred in the row -- keeping them in the title inflated it and
+/// pushed the label off-centre.
+class _FolderTile extends StatefulWidget {
+  const _FolderTile({
+    required this.folder,
+    required this.meetings,
+    required this.onToggleFavorite,
+    required this.onDeleteMeeting,
+    required this.onRemoveMeetingFromFolder,
+    required this.onDeleteFolder,
+  });
+
+  final Folder folder;
+  final List<Meeting> meetings;
+  final void Function(String meetingId) onToggleFavorite;
+  final void Function(String meetingId) onDeleteMeeting;
+  final void Function(String meetingId) onRemoveMeetingFromFolder;
+  final VoidCallback onDeleteFolder;
+
+  @override
+  State<_FolderTile> createState() => _FolderTileState();
+}
+
+class _FolderTileState extends State<_FolderTile> {
+  bool _expanded = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final folder = widget.folder;
+    final meetings = widget.meetings;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: context.appSurface,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: context.appShadowSubtle,
+      ),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          onExpansionChanged: (v) => setState(() => _expanded = v),
+          leading: Icon(
+            Icons.folder_rounded,
+            color: Color(folder.colorValue),
+          ),
+          title: Text(folder.name, style: context.cardTitle),
+          subtitle: Text(
+            '${meetings.length} meeting${meetings.length == 1 ? '' : 's'}',
+            style: TextStyle(fontSize: 12, color: context.appTextSecondary),
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                icon: Icon(
+                  Icons.delete_outline_rounded,
+                  color: context.appTextSecondary,
+                  size: 20,
+                ),
+                tooltip: 'Delete folder',
+                onPressed: widget.onDeleteFolder,
+              ),
+              AnimatedRotation(
+                turns: _expanded ? 0.5 : 0.0,
+                duration: const Duration(milliseconds: 200),
+                child: Icon(
+                  Icons.expand_more_rounded,
+                  color: context.appTextSecondary,
+                ),
+              ),
+            ],
+          ),
+          children: meetings.isEmpty
+              ? [
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Text(
+                      'No meetings in this folder',
+                      style: TextStyle(color: context.appTextTertiary),
+                    ),
+                  ),
+                ]
+              : meetings
+                    .map(
+                      (m) => MeetingListTile(
+                        meeting: m,
+                        onFavoriteToggle: () => widget.onToggleFavorite(m.id),
+                        onDelete: () => widget.onDeleteMeeting(m.id),
+                        onRemoveFromFolder: () =>
+                            widget.onRemoveMeetingFromFolder(m.id),
+                      ),
+                    )
+                    .toList(),
         ),
       ),
     );

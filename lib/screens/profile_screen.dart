@@ -1,5 +1,7 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import '../theme/app_theme.dart';
 import '../providers/settings_provider.dart';
@@ -45,6 +47,83 @@ class _ProfileScreenState extends State<ProfileScreen> {
     Navigator.pop(context);
   }
 
+  /// The photo is applied immediately (not on Save Changes), so the change is
+  /// visible everywhere the avatar shows the moment it's picked.
+  Future<void> _pickAvatar(ImageSource source) async {
+    final settings = context.read<SettingsProvider>();
+    final messenger = ScaffoldMessenger.of(context);
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: source,
+        maxWidth: 512,
+        maxHeight: 512,
+        imageQuality: 85,
+      );
+      if (picked == null) return;
+      await settings.setUserAvatar(picked.path);
+    } catch (_) {
+      messenger.showSnackBar(
+        const SnackBar(content: Text("Couldn't set that photo. Try again.")),
+      );
+    }
+  }
+
+  void _showAvatarOptions() {
+    final settings = context.read<SettingsProvider>();
+    final hasPhoto = settings.userAvatarPath != null;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: context.appSurface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (sheetContext) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 8),
+            ListTile(
+              leading: Icon(
+                Icons.camera_alt_outlined,
+                color: context.appTextPrimary,
+              ),
+              title: Text('Take Photo', style: GoogleFonts.manrope()),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _pickAvatar(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: Icon(
+                Icons.photo_library_outlined,
+                color: context.appTextPrimary,
+              ),
+              title: Text('Choose from Gallery', style: GoogleFonts.manrope()),
+              onTap: () {
+                Navigator.pop(sheetContext);
+                _pickAvatar(ImageSource.gallery);
+              },
+            ),
+            if (hasPhoto)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: Text(
+                  'Remove Photo',
+                  style: GoogleFonts.manrope(color: Colors.red),
+                ),
+                onTap: () {
+                  Navigator.pop(sheetContext);
+                  settings.removeUserAvatar();
+                },
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final Color bgColor = context.appBackground;
@@ -78,37 +157,51 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             // 1. Central Avatar Section
             Center(
-              child: Stack(
-                children: [
-                  CircleAvatar(
-                    radius: 60,
-                    backgroundColor: _swatches[_selectedColorIndex].withValues(
-                      alpha: 0.2,
+              child: GestureDetector(
+                onTap: _showAvatarOptions,
+                child: Stack(
+                  children: [
+                    Builder(
+                      builder: (context) {
+                        final avatarPath = context
+                            .watch<SettingsProvider>()
+                            .userAvatarPath;
+                        return CircleAvatar(
+                          radius: 60,
+                          backgroundColor: _swatches[_selectedColorIndex]
+                              .withValues(alpha: 0.2),
+                          backgroundImage: avatarPath != null
+                              ? FileImage(File(avatarPath))
+                              : null,
+                          child: avatarPath == null
+                              ? Icon(
+                                  Icons.person,
+                                  size: 60,
+                                  color: _swatches[_selectedColorIndex],
+                                )
+                              : null,
+                        );
+                      },
                     ),
-                    child: Icon(
-                      Icons.person,
-                      size: 60,
-                      color: _swatches[_selectedColorIndex],
-                    ),
-                  ),
-                  Positioned(
-                    bottom: 0,
-                    right: 0,
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: scribeTeal,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: bgColor, width: 3),
+                    Positioned(
+                      bottom: 0,
+                      right: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: scribeTeal,
+                          shape: BoxShape.circle,
+                          border: Border.all(color: bgColor, width: 3),
+                        ),
+                        child: const Icon(
+                          Icons.camera_alt,
+                          color: Colors.white,
+                          size: 20,
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.camera_alt,
-                        color: Colors.white,
-                        size: 20,
-                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             const SizedBox(height: 48),

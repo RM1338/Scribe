@@ -47,3 +47,11 @@ app.*.map.json
 
 # Environment variables
 .env
+
+# Built app binaries (distribute these, don't commit them)
+*.apk
+*.aab
+
+# Supabase CLI local state
+supabase/.temp
+supabase/.branches

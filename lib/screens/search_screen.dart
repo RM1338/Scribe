@@ -5,6 +5,7 @@ import '../providers/meeting_provider.dart';
 // import '../widgets/meeting_list_tile.dart';
 import '../models/meeting.dart';
 import 'detail_screen.dart';
+import 'note_editor_screen.dart';
 
 class SearchScreen extends StatefulWidget {
   const SearchScreen({super.key});
@@ -378,8 +379,9 @@ class _SearchScreenState extends State<SearchScreen> {
                                 Navigator.push(
                                   context,
                                   MaterialPageRoute(
-                                    builder: (_) =>
-                                        DetailScreen(meeting: results[i]),
+                                    builder: (_) => results[i].isNote
+                                        ? NoteEditorScreen(note: results[i])
+                                        : DetailScreen(meeting: results[i]),
                                   ),
                                 );
                               },

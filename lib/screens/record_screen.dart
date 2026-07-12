@@ -205,72 +205,74 @@ class _RecordScreenState extends State<RecordScreen>
             backgroundColor: Colors.transparent,
             elevation: 0,
             automaticallyImplyLeading: false,
-            title: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Back Button (resembling settings/back in mockup)
-                InkWell(
-                  onTap: () => AppShell.switchToTab(0),
-                  borderRadius: BorderRadius.circular(20),
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? Colors.white.withValues(alpha: 0.05)
-                          : Colors.black.withValues(alpha: 0.03),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      color: textPrimary,
-                      size: 16,
-                    ),
+            centerTitle: true,
+            // Back button lives in the leading slot; the trailing SizedBox
+            // mirrors its width so centerTitle lands the status block dead
+            // centre rather than being pushed off by the leading.
+            leadingWidth: 64,
+            leading: Padding(
+              padding: const EdgeInsets.only(left: 16),
+              child: InkWell(
+                onTap: () => AppShell.switchToTab(0),
+                borderRadius: BorderRadius.circular(20),
+                child: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.black.withValues(alpha: 0.03),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.arrow_back_ios_new_rounded,
+                    color: textPrimary,
+                    size: 16,
                   ),
                 ),
-
-                // Status Pill / Title
-                Row(
+              ),
+            ),
+            title: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!isIdle)
+                  FadeTransition(
+                    opacity: isRecording
+                        ? _pulseController
+                        : const AlwaysStoppedAnimation(1.0),
+                    child: Container(
+                      width: 10,
+                      height: 10,
+                      decoration: BoxDecoration(
+                        color: isPaused ? Colors.orange : scribeTeal,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ),
+                if (!isIdle) const SizedBox(width: 12),
+                Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (!isIdle)
-                      FadeTransition(
-                        opacity: isRecording
-                            ? _pulseController
-                            : const AlwaysStoppedAnimation(1.0),
-                        child: Container(
-                          width: 10,
-                          height: 10,
-                          decoration: BoxDecoration(
-                            color: isPaused ? Colors.orange : scribeTeal,
-                            shape: BoxShape.circle,
-                          ),
+                    Text(
+                      _pendingTitle ?? 'New Recording',
+                      style: context.cardTitle,
+                    ),
+                    if (!isIdle) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        isPaused ? 'PAUSED' : 'LIVE RECORDING',
+                        style: GoogleFonts.manrope(
+                          color: textSecondary,
+                          fontSize: 9,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1,
                         ),
                       ),
-                    if (!isIdle) const SizedBox(width: 12),
-                    Column(
-                      children: [
-                        Text(
-                          _pendingTitle ?? 'New Recording',
-                          style: context.cardTitle,
-                        ),
-                        if (!isIdle) ...[
-                          const SizedBox(height: 2),
-                          Text(
-                            isPaused ? 'PAUSED' : 'LIVE RECORDING',
-                            style: GoogleFonts.manrope(
-                              color: textSecondary,
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 1,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                    ],
                   ],
                 ),
               ],
             ),
+            actions: const [SizedBox(width: 64)],
           ),
           body: Column(
             children: [

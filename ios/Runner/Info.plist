@@ -74,5 +74,9 @@
 	<string>Scribe needs access to speech recognition to transcribe your meetings in real-time.</string>
 	<key>NSMicrophoneUsageDescription</key>
 	<string>Scribe needs access to your microphone to record and transcribe meetings.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Scribe needs access to your camera to take a profile photo.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Scribe needs access to your photos to set a profile picture.</string>
 </dict>
 </plist>

@@ -11,8 +11,6 @@ import '../services/storage_service.dart';
 import '../services/transcription_service.dart';
 import '../services/summary_service.dart';
 import '../services/translation_service.dart';
-import '../services/device_identity.dart';
-import '../services/device_quota_service.dart';
 import 'settings_provider.dart';
 
 enum RecordingState { idle, recording, paused }
@@ -25,9 +23,6 @@ class MeetingProvider with ChangeNotifier {
   final TranscriptionService _transcription = TranscriptionService();
   final SummaryService _summary = SummaryService();
   final TranslationService _translation = TranslationService();
-  final DeviceQuotaService _quota = DeviceQuotaService(
-    identity: DeviceIdentity(),
-  );
   final AudioRecorder _recorder = AudioRecorder();
   final SpeechToText _speechToText = SpeechToText();
   final AudioPlayer _audioPlayer = AudioPlayer();
@@ -106,21 +101,22 @@ class MeetingProvider with ChangeNotifier {
 
     if (_selectedFolderId != null) {
       filtered = filtered
-          .where((m) => m.folderId == _selectedFolderId)
+          .where((m) => m.folderIds.contains(_selectedFolderId))
           .toList();
     }
 
     switch (_selectedFilter) {
       case 'Transcribed':
         return filtered
-            .where((m) => m.status == MeetingStatus.transcribed)
+            .where((m) => !m.isNote && m.status == MeetingStatus.transcribed)
             .toList();
       case 'In Progress':
         return filtered
             .where(
               (m) =>
-                  m.status == MeetingStatus.inProgress ||
-                  m.status == MeetingStatus.processing,
+                  !m.isNote &&
+                  (m.status == MeetingStatus.inProgress ||
+                      m.status == MeetingStatus.processing),
             )
             .toList();
       case 'Favorites':
@@ -260,6 +256,7 @@ class MeetingProvider with ChangeNotifier {
   List<Meeting> get highlightMeetings =>
       _meetings.where((m) => m.highlights.isNotEmpty).toList();
   List<Meeting> get shortMeetings => _meetings.where((m) {
+    if (m.isNote) return false; // Notes have no duration to reason about.
     // Duration is usually "Mm Ss" or "Ss".
     // Simple approximation: check if "h" or > 5m
     if (m.duration.contains('h')) return false;
@@ -351,7 +348,9 @@ class MeetingProvider with ChangeNotifier {
   }
 
   // ── Folders ──────────────────────────────────────────────
-  Future<void> createFolder(String name, int colorValue) async {
+  /// Creates a folder and returns its id, so callers (e.g. the "Move to
+  /// Folder" dialog) can select the meeting into it right away.
+  Future<String> createFolder(String name, int colorValue) async {
     final folder = Folder(
       id: DateTime.now().millisecondsSinceEpoch.toString(),
       name: name,
@@ -360,13 +359,18 @@ class MeetingProvider with ChangeNotifier {
     _folders.add(folder);
     await _storage.saveFolders(_folders.map((f) => f.toJson()).toList());
     notifyListeners();
+    return folder.id;
   }
 
   Future<void> deleteFolder(String folderId) async {
     _folders.removeWhere((f) => f.id == folderId);
-    // Unset folder for meetings in this folder
+    // Drop this folder from every meeting that referenced it.
     _meetings = _meetings.map((m) {
-      if (m.folderId == folderId) return m.copyWith(folderId: null);
+      if (m.folderIds.contains(folderId)) {
+        return m.copyWith(
+          folderIds: m.folderIds.where((id) => id != folderId).toList(),
+        );
+      }
       return m;
     }).toList();
     await _storage.saveFolders(_folders.map((f) => f.toJson()).toList());
@@ -375,13 +379,38 @@ class MeetingProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> moveMeetingToFolder(String meetingId, String? folderId) async {
+  /// Replaces the full set of folders a meeting belongs to -- used by the
+  /// multi-select "Move to Folder" dialog. Ignores ids for folders that no
+  /// longer exist.
+  Future<void> setMeetingFolders(
+    String meetingId,
+    List<String> folderIds,
+  ) async {
     final index = _meetings.indexWhere((m) => m.id == meetingId);
-    if (index != -1) {
-      _meetings[index] = _meetings[index].copyWith(folderId: folderId);
-      await _storage.saveMeetings(_meetings);
-      notifyListeners();
-    }
+    if (index == -1) return;
+    final valid = folderIds
+        .where((id) => _folders.any((f) => f.id == id))
+        .toList();
+    _meetings[index] = _meetings[index].copyWith(folderIds: valid);
+    await _storage.saveMeetings(_meetings);
+    notifyListeners();
+  }
+
+  /// Removes a single meeting from a single folder, leaving its other folders
+  /// intact. Used by the swipe/menu action in the Folders tab.
+  Future<void> removeMeetingFromFolder(
+    String meetingId,
+    String folderId,
+  ) async {
+    final index = _meetings.indexWhere((m) => m.id == meetingId);
+    if (index == -1) return;
+    final m = _meetings[index];
+    if (!m.folderIds.contains(folderId)) return;
+    _meetings[index] = m.copyWith(
+      folderIds: m.folderIds.where((id) => id != folderId).toList(),
+    );
+    await _storage.saveMeetings(_meetings);
+    notifyListeners();
   }
 
   // ── Search History ───────────────────────────────────────
@@ -473,6 +502,7 @@ class MeetingProvider with ChangeNotifier {
             m.title.toLowerCase().contains(cleanQuery) ||
             (m.transcript?.toLowerCase().contains(cleanQuery) ?? false) ||
             (m.summary?.toLowerCase().contains(cleanQuery) ?? false) ||
+            (m.notes?.toLowerCase().contains(cleanQuery) ?? false) ||
             m.topics.any((t) => t.toLowerCase().contains(cleanQuery));
         if (!match) return false;
       }
@@ -728,22 +758,41 @@ class MeetingProvider with ChangeNotifier {
     return meeting;
   }
 
+  /// Creates a standalone typed note and returns its id so the editor can keep
+  /// updating the same record. A note is a [Meeting] with no audio; its body is
+  /// stored in [Meeting.notes]. Persists the same fire-and-forget way as the
+  /// other synchronous mutators here.
+  String createNote({String title = '', String body = ''}) {
+    final now = DateTime.now();
+    final id = now.millisecondsSinceEpoch.toString();
+    final cleanTitle = title.trim().isEmpty ? 'Untitled Note' : title.trim();
+
+    final note = Meeting(
+      id: id,
+      title: cleanTitle,
+      team: 'Personal',
+      date: _formatDate(now),
+      duration: '',
+      status: MeetingStatus.transcribed,
+      isNote: true,
+      notes: body.trim(),
+      recordedAt: now,
+    );
+
+    _meetings.insert(0, note);
+    _storage.saveMeetings(_meetings);
+    notifyListeners();
+    return id;
+  }
+
   Future<void> _transcribeAndSummarise(Meeting meeting) async {
     _currentProcessingId = meeting.id;
     _processingState = ProcessingState.transcribing;
     notifyListeners();
 
     try {
-      final apiKey = _settings?.groqApiKey;
-      if (apiKey == null || apiKey.isEmpty) {
-        throw Exception('Groq API Key is missing. Please set it in Settings.');
-      }
-
-      // Spend a unit of the device's free allowance before doing any paid work.
-      // Throws QuotaExceededException, which the catch below reports without
-      // marking the recording as a failed transcription.
-      await _quota.consume();
-
+      // An empty key is fine: the service routes through the server-side proxy.
+      // A user-supplied key (if present) is used directly instead.
       debugPrint('Starting transcription for meeting: ${meeting.id}');
       final result = await _transcription.transcribe(
         meeting.audioFilePath!,
@@ -810,11 +859,6 @@ class MeetingProvider with ChangeNotifier {
       } else {
         _updateMeeting(updated.copyWith(status: MeetingStatus.transcribed));
       }
-    } on QuotaException catch (e) {
-      // No unit was spent and no work was done -- the recording is intact and
-      // can be transcribed later, so don't stamp an error into its transcript.
-      debugPrint('Device quota check blocked transcription: $e');
-      _notificationController.add(e.toString());
     } catch (e) {
       debugPrint('Transcription pipeline error: $e');
       _updateMeeting(
@@ -828,6 +872,23 @@ class MeetingProvider with ChangeNotifier {
       _processingState = ProcessingState.idle;
       notifyListeners();
     }
+  }
+
+  /// Re-runs transcription (and the summary that follows) for a recording that
+  /// has audio but no usable transcript -- one interrupted by a dropped
+  /// connection, a missing API key, or any earlier failure. A no-op if it has
+  /// no audio file or is already being processed.
+  Future<void> retryTranscription(String meetingId) async {
+    final idx = _meetings.indexWhere((m) => m.id == meetingId);
+    if (idx == -1) return;
+    final meeting = _meetings[idx];
+    if (meeting.audioFilePath == null || _currentProcessingId == meeting.id) {
+      return;
+    }
+
+    final reset = meeting.copyWith(status: MeetingStatus.processing);
+    _updateMeeting(reset);
+    await _transcribeAndSummarise(reset);
   }
 
   /// Re-generate summary for a meeting that already has a transcript.
@@ -918,6 +979,78 @@ class MeetingProvider with ChangeNotifier {
     final trimmed = notes.trim();
     if ((_meetings[idx].notes ?? '') == trimmed) return;
     _meetings[idx] = _meetings[idx].copyWith(notes: trimmed);
+    notifyListeners();
+    await _storage.saveMeetings(_meetings);
+  }
+
+  /// Replaces the AI summary with the user's edited text. Empties are ignored;
+  /// an edit also drops cached translations, whose own summaries would otherwise
+  /// disagree with the one now on screen (see the drop-on-edit rule that
+  /// [editTranscriptSegment] follows).
+  Future<void> updateSummary(String meetingId, String summary) async {
+    final idx = _meetings.indexWhere((m) => m.id == meetingId);
+    if (idx == -1) return;
+    final trimmed = summary.trim();
+    if ((_meetings[idx].summary ?? '').trim() == trimmed) return;
+    _meetings[idx] = _meetings[idx].copyWith(
+      summary: trimmed,
+      translations: {},
+    );
+    notifyListeners();
+    await _storage.saveMeetings(_meetings);
+  }
+
+  /// Replaces the text of transcript segment [index], keeping its timing and
+  /// speaker so playback sync is untouched. Rebuilds the flat [transcript] the
+  /// summary and search read from, and drops every cached translation: an edited
+  /// source line makes its positionally-aligned translation wrong.
+  Future<void> editTranscriptSegment(
+    String meetingId,
+    int index,
+    String newText,
+  ) async {
+    final idx = _meetings.indexWhere((m) => m.id == meetingId);
+    if (idx == -1) return;
+    final meeting = _meetings[idx];
+    if (index < 0 || index >= meeting.segments.length) return;
+    final trimmed = newText.trim();
+    if (trimmed.isEmpty || meeting.segments[index].text.trim() == trimmed) {
+      return;
+    }
+
+    final segments = List<MeetingSegment>.from(meeting.segments);
+    final old = segments[index];
+    segments[index] = MeetingSegment(
+      start: old.start,
+      end: old.end,
+      text: trimmed,
+      speaker: old.speaker,
+    );
+
+    _meetings[idx] = meeting.copyWith(
+      segments: segments,
+      transcript: segments.map((s) => s.text.trim()).join(' '),
+      translations: {},
+    );
+    notifyListeners();
+    await _storage.saveMeetings(_meetings);
+  }
+
+  /// Replaces the flat transcript text for a meeting that has no per-segment
+  /// breakdown. Drops cached translations for the same reason as
+  /// [editTranscriptSegment].
+  Future<void> editTranscriptText(String meetingId, String newText) async {
+    final idx = _meetings.indexWhere((m) => m.id == meetingId);
+    if (idx == -1) return;
+    final trimmed = newText.trim();
+    if (trimmed.isEmpty ||
+        (_meetings[idx].transcript ?? '').trim() == trimmed) {
+      return;
+    }
+    _meetings[idx] = _meetings[idx].copyWith(
+      transcript: trimmed,
+      translations: {},
+    );
     notifyListeners();
     await _storage.saveMeetings(_meetings);
   }

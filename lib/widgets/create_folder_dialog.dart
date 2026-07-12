@@ -31,6 +31,7 @@ void showScribeCreateFolderDialog(BuildContext context) {
 
       return StatefulBuilder(
         builder: (context, setState) {
+          final bool hasName = nameController.text.trim().isNotEmpty;
           return AlertDialog(
             backgroundColor: bgColor,
             surfaceTintColor: Colors.transparent,
@@ -48,6 +49,7 @@ void showScribeCreateFolderDialog(BuildContext context) {
                 const SizedBox(height: 12),
                 TextField(
                   controller: nameController,
+                  onChanged: (_) => setState(() {}),
                   style: GoogleFonts.manrope(
                     color: textPrimary,
                     fontWeight: FontWeight.w500,
@@ -148,20 +150,26 @@ void showScribeCreateFolderDialog(BuildContext context) {
                   Expanded(
                     flex: 2,
                     child: ElevatedButton(
-                      onPressed: () {
-                        final name = nameController.text.trim();
-                        if (name.isNotEmpty) {
-                          final provider = context.read<MeetingProvider>();
-                          provider.createFolder(
-                            name,
-                            swatchColors[selectedColorIndex].toARGB32(),
-                          );
-                        }
-                        Navigator.pop(context);
-                      },
+                      onPressed: hasName
+                          ? () {
+                              final name = nameController.text.trim();
+                              final provider = context.read<MeetingProvider>();
+                              provider.createFolder(
+                                name,
+                                swatchColors[selectedColorIndex].toARGB32(),
+                              );
+                              Navigator.pop(context);
+                            }
+                          : null,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: scribeTeal,
                         foregroundColor: Colors.white,
+                        disabledBackgroundColor: isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : Colors.black.withValues(alpha: 0.08),
+                        disabledForegroundColor: textSecondary.withValues(
+                          alpha: 0.5,
+                        ),
                         elevation: 0,
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16),
