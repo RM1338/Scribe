@@ -103,9 +103,9 @@ flutter build apk --release  # Android release
     flutter screenshot --out docs/screens/record.png
   or record a demo GIF of a device screen with `scrcpy --record demo.mp4`
   then convert to gif. Drop the files in docs/screens/ and reference them below.
--->
 
 _Screenshots land here with the first public release._
+-->
 
 ## Roadmap
 
