@@ -95,9 +95,9 @@ flutter run                  # dev
 flutter build apk --release  # Android release
 ```
 
+<!--
 ## Screens
 
-<!--
   Screenshots go here once the first release is out.
   To capture them from a connected device/emulator:
     flutter screenshot --out docs/screens/record.png
