@@ -511,9 +511,13 @@ class _DetailScreenState extends State<DetailScreen>
     if (live.segments.isEmpty) {
       final transcript = live.transcript;
       // A failed run stores its error in the transcript field; treat that as
-      // "no transcript" so the retry state shows instead of the error text.
+      // "no transcript" so the retry state shows instead of the raw text, but
+      // keep the reason around to show under the failure message.
       final failed =
           transcript != null && transcript.startsWith('Transcription failed');
+      final failureReason = failed
+          ? transcript.replaceFirst(RegExp(r'^Transcription failed:\s*'), '')
+          : null;
       final hasText = transcript != null && transcript.isNotEmpty && !failed;
 
       if (hasText) {
@@ -560,6 +564,7 @@ class _DetailScreenState extends State<DetailScreen>
         live,
         provider,
         failed: failed,
+        failureReason: failureReason,
       );
     }
 
@@ -629,6 +634,7 @@ class _DetailScreenState extends State<DetailScreen>
     Meeting live,
     MeetingProvider provider, {
     required bool failed,
+    String? failureReason,
   }) {
     if (provider.currentProcessingId == live.id) {
       return Center(
@@ -674,6 +680,18 @@ class _DetailScreenState extends State<DetailScreen>
                 height: 1.5,
               ),
             ),
+            if (failed && failureReason != null && failureReason.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              SelectableText(
+                failureReason,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.manrope(
+                  color: context.appTextTertiary,
+                  fontSize: 12,
+                  height: 1.4,
+                ),
+              ),
+            ],
             if (canRetry) ...[
               const SizedBox(height: 20),
               ElevatedButton.icon(
