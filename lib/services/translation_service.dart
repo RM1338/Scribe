@@ -26,7 +26,7 @@ class TranslationException implements Exception {
 class TranslationService {
   static const String _groqUrl =
       'https://api.groq.com/openai/v1/chat/completions';
-  static const String _groqModel = 'llama-3.3-70b-versatile';
+  static const String _groqModel = 'openai/gpt-oss-120b';
 
   /// Segments per request. Large enough to give the model surrounding context
   /// (so pronouns and terminology stay consistent), small enough that the

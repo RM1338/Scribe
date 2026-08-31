@@ -25,7 +25,7 @@ class SummaryService {
   static const String _groqUrl =
       'https://api.groq.com/openai/v1/chat/completions';
   static const String _defaultModel = 'llama3.2';
-  static const String _groqModel = 'llama-3.3-70b-versatile';
+  static const String _groqModel = 'openai/gpt-oss-120b';
 
   String model;
   SummaryService({this.model = _defaultModel});
